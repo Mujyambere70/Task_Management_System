@@ -1,0 +1,22 @@
+{% extends "auth/_auth_base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block form %}
+<h2>Welcome back</h2>
+<p class="muted">Sign in to your workspace</p>
+<form method="post" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Email<input type="email" name="email" value="{{ email }}" required autofocus autocomplete="username"></label>
+  <label>Password
+    <span class="pw"><input type="password" name="password" required autocomplete="current-password"><button type="button" class="show-pw">Show</button></span>
+  </label>
+  <label class="check"><input type="checkbox" name="remember" value="1"> Keep me signed in</label>
+  <button class="btn btn-primary btn-block btn-lg">Sign in</button>
+</form>
+<div class="demo-box">
+  <b>Demo accounts</b>
+  <button type="button" class="link fill-demo" data-email="admin@taskflow.demo" data-pw="Admin@1234">Admin · admin@taskflow.demo</button>
+  <button type="button" class="link fill-demo" data-email="anna@taskflow.demo" data-pw="Demo@1234">Member · anna@taskflow.demo</button>
+</div>
+{% if settings.allow_registration == '1' %}<p class="switch">New here? <a href="{{ url_for('register') }}">Create an account</a></p>
+{% else %}<p class="switch">Need an account? Ask your workspace admin.</p>{% endif %}
+{% endblock %}

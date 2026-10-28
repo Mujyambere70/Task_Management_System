@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Tasks{% endblock %}
+{% block content %}
+{% set mine = args.get('assignee') == user.id|string %}{% set created = args.get('creator') == user.id|string %}
+<div class="page-head">
+  <div><h1>{{ 'My tasks' if mine else 'Tasks I created' if created else 'All tasks' }}</h1>
+    <p class="muted">{{ tasks|length }} task{{ '' if tasks|length == 1 else 's' }} found</p></div>
+  <div class="actions">
+    <a class="btn btn-light" href="{{ url_for('export_csv') }}"><svg class="i"><use href="#i-download"/></svg> Export CSV</a>
+    <a class="btn btn-primary" href="{{ url_for('task_new') }}"><svg class="i"><use href="#i-plus"/></svg> New task</a>
+  </div>
+</div>
+
+<div class="tabs">
+  {% set base = dict(args) %}
+  {% for key, label in [('', 'All'), ('open', 'Open'), ('todo', 'To Do'), ('in_progress', 'In Progress'), ('review', 'In Review'), ('done', 'Done')] %}
+  {% set _ = base.update({'status': key}) %}
+  <a href="{{ url_for('task_list', **base) }}" class="{{ 'on' if args.get('status', '') == key }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<form class="filters" method="get">
+  <input type="hidden" name="status" value="{{ args.get('status', '') }}">
+  <input type="search" name="q" value="{{ args.get('q', '') }}" placeholder="Search title or description…">
+  <select name="assignee">
+    <option value="">Anyone</option>
+    <option value="none" {{ 'selected' if args.get('assignee') == 'none' }}>Unassigned</option>
+    {% for u in users %}<option value="{{ u.id }}" {{ 'selected' if args.get('assignee') == u.id|string }}>{{ u.name }}{{ ' (me)' if u.id == user.id }}</option>{% endfor %}
+  </select>
+  <select name="creator">
+    <option value="">Created by anyone</option>
+    <option value="{{ user.id }}" {{ 'selected' if args.get('creator') == user.id|string }}>Created by me</option>
+    {% for u in users if u.id != user.id %}<option value="{{ u.id }}" {{ 'selected' if args.get('creator') == u.id|string }}>Created by {{ u.name }}</option>{% endfor %}
+  </select>
+  <select name="project">
+    <option value="">All projects</option>
+    {% for p in projects %}<option value="{{ p.id }}" {{ 'selected' if args.get('project') == p.id|string }}>{{ p.name }}</option>{% endfor %}
+  </select>
+  <select name="priority">
+    <option value="">Any priority</option>
+    {% for k, n in PRIORITIES %}<option value="{{ k }}" {{ 'selected' if args.get('priority') == k }}>{{ n }}</option>{% endfor %}
+  </select>
+  <select name="due">
+    <option value="">Any due date</option>
+    <option value="overdue" {{ 'selected' if args.get('due') == 'overdue' }}>Overdue</option>
+    <option value="today" {{ 'selected' if args.get('due') == 'today' }}>Due today</option>
+    <option value="week" {{ 'selected' if args.get('due') == 'week' }}>Next 7 days</option>
+  </select>
+  <select name="sort">
+    {% for k, n in [('due', 'Sort: due date'), ('priority', 'Sort: priority'), ('newest', 'Sort: newest'), ('updated', 'Sort: recently updated'), ('title', 'Sort: title')] %}
+    <option value="{{ k }}" {{ 'selected' if args.get('sort', 'due') == k }}>{{ n }}</option>{% endfor %}
+  </select>
+  <button class="btn btn-dark">Apply</button>
+  {% if args %}<a class="btn btn-ghost" href="{{ url_for('task_list') }}">Reset</a>{% endif %}
+</form>
+
+{% set admin = user.role == 'admin' %}
+{% if admin %}
+<form method="post" action="{{ url_for('task_bulk') }}" id="bulkForm" class="bulk-bar" hidden>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+  <b><span id="bulkCount">0</span> selected</b>
+  <select name="action" id="bulkAction" required>
+    <option value="">Choose action…</option>
+    <option value="status">Change status</option><option value="priority">Change priority</option>
+    <option value="assignee">Assign to</option><option value="delete">Delete tasks</option>
+  </select>
+  <select name="value" data-for="status" hidden>{% for k, n in STATUSES %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select>
+  <select name="value" data-for="priority" hidden>{% for k, n in PRIORITIES %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select>
+  <select name="value" data-for="assignee" hidden><option value="">Unassigned</option>{% for u in users if u.active %}<option value="{{ u.id }}">{{ u.name }}</option>{% endfor %}</select>
+  <button class="btn btn-primary sm">Apply</button>
+  <button type="button" class="btn btn-ghost sm" id="bulkClear">Clear</button>
+</form>
+{% endif %}
+<div class="card flush">
+  <table class="table">
+    <thead><tr>{% if admin %}<th class="cbx"><input type="checkbox" id="checkAll" title="Select all"></th>{% endif %}<th style="width:40%">Task</th><th>Status</th><th>Priority</th><th>Assignee</th><th>Due</th><th></th></tr></thead>
+    <tbody>
+    {% for t in tasks %}
+      <tr class="{{ 'is-done' if t.status == 'done' }}">
+        {% if admin %}<td class="cbx"><input type="checkbox" name="ids" value="{{ t.id }}" form="bulkForm" class="row-check"></td>{% endif %}
+        <td><a class="t-title" href="{{ url_for('task_detail', task_id=t.id) }}">{{ t.title }}</a>
+          <div class="meta">{{ m.project_tag(t) }}{{ m.checklist(t) }}{% if t.comment_count %}<span class="cc"><svg class="i"><use href="#i-chat"/></svg>{{ t.comment_count }}</span>{% endif %}</div></td>
+        <td>{{ m.status_pill(t.status) }}</td>
+        <td>{{ m.priority_pill(t.priority) }}</td>
+        <td><span class="who">{{ m.avatar(t.assignee_name, t.assignee_color, 'sm') }}<span>{{ t.assignee_name or 'Unassigned' }}</span></span></td>
+        <td>{{ m.due(t) or '—' }}</td>
+        <td class="right">{% if can_edit(t) %}<a class="icon-btn sm" href="{{ url_for('task_edit', task_id=t.id) }}" title="Edit"><svg class="i"><use href="#i-edit"/></svg></a>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7"><div class="empty"><b>No tasks match these filters.</b><br>Try changing the filters or <a href="{{ url_for('task_new') }}">create a new task</a>.</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

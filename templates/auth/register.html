@@ -1,0 +1,19 @@
+{% extends "auth/_auth_base.html" %}
+{% block title %}Create account{% endblock %}
+{% block form %}
+<h2>Create your account</h2>
+<p class="muted">Join your team’s workspace in a minute</p>
+<form method="post" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Full name<input name="name" value="{{ form.get('name', '') }}" required autofocus></label>
+  <label>Work email<input type="email" name="email" value="{{ form.get('email', '') }}" required></label>
+  <label>Job title <small>(optional)</small><input name="job_title" value="{{ form.get('job_title', '') }}" placeholder="e.g. Developer"></label>
+  <div class="row2">
+    <label>Password<input type="password" name="password" minlength="8" required autocomplete="new-password"></label>
+    <label>Confirm<input type="password" name="confirm" minlength="8" required autocomplete="new-password"></label>
+  </div>
+  <p class="hint">At least 8 characters.</p>
+  <button class="btn btn-primary btn-block btn-lg">Create account</button>
+</form>
+<p class="switch">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
+{% endblock %}

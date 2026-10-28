@@ -1,0 +1,8 @@
+taskflow.db
+__pycache__/
+*.pyc
+.venv/
+console_version/*.txt
+*.db
+*.db.old-backup
+.DS_Store

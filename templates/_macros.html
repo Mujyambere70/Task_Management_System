@@ -1,0 +1,40 @@
+{% macro avatar(name, color, size='') -%}
+<span class="avatar {{ size }}" style="background:{{ color or '#94a3b8' }}" title="{{ name or 'Unassigned' }}">{{ (name or '?')|initials if name else '—' }}</span>
+{%- endmacro %}
+
+{% macro status_pill(status) -%}
+<span class="pill st-{{ status }}">{{ STATUS_NAMES[status] }}</span>
+{%- endmacro %}
+
+{% macro priority_pill(p) -%}
+<span class="prio pr-{{ p }}"><svg class="i"><use href="#i-flag"/></svg>{{ PRIORITY_NAMES[p] }}</span>
+{%- endmacro %}
+
+{% macro due(t) -%}
+{% if t.due_date %}<span class="due {{ t|due_class }}"><svg class="i"><use href="#i-clock"/></svg>{{ t.due_date|due }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro checklist(t) -%}
+{% if t.sub_total %}<span class="chk {{ 'all' if t.sub_done == t.sub_total }}" title="Checklist"><svg class="i"><use href="#i-check"/></svg>{{ t.sub_done }}/{{ t.sub_total }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro project_tag(t) -%}
+{% if t.project_name %}<span class="ptag"><i class="dot" style="background:{{ t.project_color }}"></i>{{ t.project_name }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro activity_text(a) -%}
+{%- set verbs = {'task_created': 'created', 'task_updated': 'updated', 'task_completed': 'completed',
+  'status_changed': 'moved', 'task_deleted': 'deleted task', 'commented': 'commented on',
+  'logged_in': 'signed in', 'user_added': 'added a team member', 'project_created': 'created project',
+  'project_updated': 'updated project', 'project_archived': 'archived project', 'project_restored': 'restored project',
+  'role_changed': 'changed a role', 'user_deactivated': 'deactivated', 'user_activated': 'activated',
+  'password_reset': 'reset the password of', 'password_changed': 'changed their password',
+  'profile_updated': 'updated their profile', 'user_updated': 'edited the details of', 'user_deleted': 'deleted the account of',
+  'settings_updated': 'changed workspace settings', 'log_cleared': 'cleared the activity log', 'tasks_cleaned': 'cleaned up tasks',
+  'project_deleted': 'deleted project', 'comment_deleted': 'deleted a comment on', 'bulk_update': 'bulk-updated tasks',
+  'comment_edited': 'edited a comment on', 'checklist_added': 'added a checklist item to', 'checklist_done': 'ticked off an item in',
+  'checklist_removed': 'removed a checklist item from', 'account_closed': 'An account was closed:'} -%}
+<b>{{ a.name or 'Someone' }}</b> {{ verbs.get(a.action, a.action) }}
+{%- if a.task_title %} <a href="{{ url_for('task_detail', task_id=a.task_id) }}">{{ a.task_title }}</a>{% elif a.action in ('task_deleted','project_created','project_updated','project_archived','project_restored','user_deactivated','user_activated','password_reset','user_updated','user_deleted','project_deleted','account_closed') %} <i>{{ a.details }}</i>{% endif %}
+{%- if a.action in ('status_changed', 'task_completed') %} <span class="muted">({{ a.details }})</span>{% elif a.action == 'commented' %}: <span class="muted">“{{ a.details }}”</span>{% elif a.action in ('checklist_added', 'checklist_done', 'checklist_removed') %} <span class="muted">“{{ a.details }}”</span>{% elif a.action in ('bulk_update', 'log_cleared', 'tasks_cleaned') %} <span class="muted">({{ a.details }})</span>{% elif a.action == 'user_added' %} <span class="muted">{{ a.details }}</span>{% endif %}
+{%- endmacro %}

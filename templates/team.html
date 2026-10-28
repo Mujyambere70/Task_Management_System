@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Team{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Team</h1><p class="muted">{{ people|selectattr('active')|list|length }} active members</p></div>
+  {% if user.role == 'admin' %}<button class="btn btn-primary" data-open="addUser"><svg class="i"><use href="#i-plus"/></svg> Add member</button>{% endif %}
+</div>
+
+<div class="people">
+  {% for p in people %}
+  <section class="card person {{ 'inactive' if not p.active }}">
+    <div class="person-top">
+      {{ m.avatar(p.name, p.color, 'lg') }}
+      <div><h3>{{ p.name }}{% if p.id == user.id %} <small class="muted">(you)</small>{% endif %}{% if p.role == 'admin' %} <span class="badge badge-admin">Admin</span>{% endif %}{% if not p.active %} <span class="badge">Inactive</span>{% endif %}</h3>
+        <p class="muted">{{ p.job_title or '—' }}</p>
+        <a class="muted small" href="mailto:{{ p.email }}">{{ p.email }}</a></div>
+    </div>
+    <div class="person-stats">
+      <a href="{{ url_for('task_list', assignee=p.id) }}"><b>{{ p.assigned }}</b><small>Assigned</small></a>
+      <a href="{{ url_for('task_list', assignee=p.id, status='done') }}"><b>{{ p.done }}</b><small>Done</small></a>
+      <a href="{{ url_for('task_list', assignee=p.id, due='overdue') }}" class="{{ 'red' if p.overdue }}"><b>{{ p.overdue }}</b><small>Overdue</small></a>
+    </div>
+    <div class="progress"><i style="width:{{ p.done_pct }}%"></i></div>
+    <small class="muted">{{ p.done_pct }}% completed</small>
+    {% if user.role == 'admin' and p.id != user.id %}
+    <details class="admin-tools">
+      <summary>Manage</summary>
+      <form method="post" action="{{ url_for('team_action', user_id=p.id, action='edit') }}" class="edit-user">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input name="name" value="{{ p.name }}" required placeholder="Full name">
+        <input type="email" name="email" value="{{ p.email }}" required placeholder="Email">
+        <input name="job_title" value="{{ p.job_title }}" placeholder="Job title">
+        <div class="swatches sm">{% for c in COLORS %}<label><input type="radio" name="color" value="{{ c }}" {{ 'checked' if c == p.color }}><i style="background:{{ c }}"></i></label>{% endfor %}</div>
+        <button class="btn btn-light sm">Save details</button>
+      </form>
+      <form method="post" action="{{ url_for('team_action', user_id=p.id, action='role') }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <select name="role">{% for r in ['member', 'admin'] %}<option value="{{ r }}" {{ 'selected' if p.role == r }}>{{ r|capitalize }}</option>{% endfor %}</select>
+        <button class="btn btn-light sm">Save role</button>
+      </form>
+      <form method="post" action="{{ url_for('team_action', user_id=p.id, action='reset') }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="text" name="password" placeholder="New password (8+)" minlength="8" required>
+        <button class="btn btn-light sm">Reset</button>
+      </form>
+      <form method="post" action="{{ url_for('team_action', user_id=p.id, action='toggle') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn {{ 'btn-danger-ghost' if p.active else 'btn-light' }} sm">{{ 'Deactivate account' if p.active else 'Activate account' }}</button>
+      </form>
+      <form method="post" action="{{ url_for('team_action', user_id=p.id, action='delete') }}"
+            data-confirm="Delete {{ p.name }}'s account? Their tasks will become unassigned and their comments will be removed.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-danger sm">Delete account</button>
+      </form>
+    </details>
+    {% elif p.id == user.id %}
+    <a class="small" href="{{ url_for('profile') }}">Edit my details and password →</a>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+
+{% if user.role == 'admin' %}
+<dialog id="addUser" class="dialog">
+  <form method="post" action="{{ url_for('team_add') }}" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2>Add team member</h2>
+    <label>Full name<input name="name" required></label>
+    <label>Email<input type="email" name="email" required></label>
+    <div class="row2">
+      <label>Job title<input name="job_title"></label>
+      <label>Role<select name="role"><option value="member">Member</option><option value="admin">Admin</option></select></label>
+    </div>
+    <label>Temporary password<input type="text" name="password" minlength="8" required></label>
+    <div class="form-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary">Add member</button></div>
+  </form>
+</dialog>
+{% endif %}
+{% endblock %}

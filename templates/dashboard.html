@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Good {{ 'morning' if now_hour < 12 else 'afternoon' if now_hour < 18 else 'evening' }}, {{ user.name.split()[0] }} 👋</h1>
+    <p class="muted">You have <b>{{ my.open }}</b> open tasks{% if my.overdue %}, <b class="red">{{ my.overdue }} overdue</b>{% endif %}{% if my.due_today %} and <b>{{ my.due_today }}</b> due today{% endif %}.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('task_new') }}"><svg class="i"><use href="#i-plus"/></svg> New task</a>
+</div>
+
+<div class="kpis">
+  <a class="kpi" href="{{ url_for('my_tasks') }}"><span class="kpi-ic ic-indigo"><svg class="i"><use href="#i-check"/></svg></span>
+    <div><small>My open tasks</small><b>{{ my.open }}</b><em>{{ my.in_progress }} in progress</em></div></a>
+  <a class="kpi" href="{{ url_for('task_list', due='overdue') }}"><span class="kpi-ic ic-red"><svg class="i"><use href="#i-alert"/></svg></span>
+    <div><small>Team overdue</small><b>{{ team.overdue }}</b><em>need attention</em></div></a>
+  <a class="kpi" href="{{ url_for('task_list', due='today') }}"><span class="kpi-ic ic-amber"><svg class="i"><use href="#i-clock"/></svg></span>
+    <div><small>Due today</small><b>{{ team.due_today }}</b><em>across all projects</em></div></a>
+  <a class="kpi" href="{{ url_for('reports') }}"><span class="kpi-ic ic-green"><svg class="i"><use href="#i-chart"/></svg></span>
+    <div><small>Team completion</small><b>{{ team.completion }}%</b><em>{{ team.done }} of {{ team.total }} tasks done</em></div></a>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <div class="card-head"><h2>My tasks</h2><a href="{{ url_for('my_tasks') }}">View all</a></div>
+    {% if overdue %}
+    <div class="group-label red">Overdue · {{ overdue|length }}</div>
+    {% for t in overdue %}{% include "_task_row.html" %}{% endfor %}
+    {% endif %}
+    <div class="group-label">Upcoming</div>
+    {% for t in upcoming %}{% include "_task_row.html" %}{% else %}
+    <div class="empty small"><b>All clear!</b> No upcoming tasks assigned to you.</div>
+    {% endfor %}
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Team activity</h2><a href="{{ url_for('reports') }}#activity">More</a></div>
+    <ul class="feed">
+      {% for a in activity %}
+      <li>{{ m.avatar(a.name, a.color, 'sm') }}<div>{{ m.activity_text(a) }}<small>{{ a.created_at|ago }}</small></div></li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+
+<div class="grid-3">
+  <section class="card">
+    <div class="card-head"><h2>Tasks by status</h2></div>
+    {% set total = team.total or 1 %}
+    <div class="donut" style="--a:{{ team.by_status.todo / total * 100 }};--b:{{ team.by_status.in_progress / total * 100 }};--c:{{ team.by_status.review / total * 100 }}">
+      <div><b>{{ team.total }}</b><small>tasks</small></div>
+    </div>
+    <ul class="legend">
+      {% for key, name in STATUSES %}<li><i class="lg-{{ key }}"></i>{{ name }}<b>{{ team.by_status[key] }}</b></li>{% endfor %}
+    </ul>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Completed · last 14 days</h2></div>
+    {% set peak = chart|map(attribute=1)|max or 1 %}
+    <div class="bars">
+      {% for d, n in chart %}
+      <div class="bar" title="{{ d.strftime('%d %b') }}: {{ n }} completed"><em>{{ n if n }}</em><i style="height:{{ (n / peak * 100)|round }}%"></i><span>{{ d.strftime('%d') }}</span></div>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Projects</h2><a href="{{ url_for('projects') }}">Manage</a></div>
+    {% for p in projects %}
+    <a class="proj-line" href="{{ url_for('board', project=p.id) }}">
+      <span><i class="dot" style="background:{{ p.color }}"></i>{{ p.name }}</span><small>{{ p.done }}/{{ p.total }}</small>
+      <div class="progress"><i style="width:{{ p.progress }}%;background:{{ p.color }}"></i></div>
+    </a>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ t.title }}{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{{ url_for('task_list') }}">Tasks</a> / {% if t.project_name %}<a href="{{ url_for('board', project=t.project_id) }}">{{ t.project_name }}</a> / {% endif %}<span>#{{ t.id }}</span></div>
+
+<div class="detail">
+  <section class="card">
+    <div class="detail-head">
+      <div>
+        <div class="meta">{{ m.status_pill(t.status) }} {{ m.priority_pill(t.priority) }} {{ m.project_tag(t) }}</div>
+        <h1>{{ t.title }}</h1>
+      </div>
+      <div class="actions">
+        {% if can_edit(t) %}<a class="btn btn-light" href="{{ url_for('task_edit', task_id=t.id) }}"><svg class="i"><use href="#i-edit"/></svg> Edit</a>{% endif %}
+        {% if can_delete(t) %}
+        <form method="post" action="{{ url_for('task_delete', task_id=t.id) }}" data-confirm="Delete this task? This cannot be undone.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn btn-danger-ghost"><svg class="i"><use href="#i-trash"/></svg> Delete</button>
+        </form>{% endif %}
+      </div>
+    </div>
+
+    {% if can_edit(t) %}
+    <div class="status-steps">
+      {% for key, name in STATUSES %}
+      <form method="post" action="{{ url_for('task_status', task_id=t.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="status" value="{{ key }}">
+        <button class="{{ 'on' if t.status == key }}">{{ name }}</button>
+      </form>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <h3 class="sub">Description</h3>
+    <div class="desc">{{ t.description or 'No description.' }}</div>
+
+    <h3 class="sub" id="checklist">Checklist{% if subtasks %} · {{ t.sub_done }}/{{ t.sub_total }}{% endif %}</h3>
+    {% if subtasks %}<div class="progress chk-bar"><i style="width:{{ (t.sub_done / t.sub_total * 100)|round }}%"></i></div>{% endif %}
+    <ul class="checklist">
+      {% for s in subtasks %}
+      <li class="{{ 'done' if s.done }}">
+        {% if can_edit(t) %}
+        <form method="post" action="{{ url_for('checklist_change', sub_id=s.id, action='toggle') }}" class="chk-toggle">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="box" title="{{ 'Mark as not done' if s.done else 'Mark as done' }}">{% if s.done %}<svg class="i"><use href="#i-tick"/></svg>{% endif %}</button>
+        </form>
+        <form method="post" action="{{ url_for('checklist_change', sub_id=s.id, action='edit') }}" class="chk-edit">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input name="title" value="{{ s.title }}" maxlength="150" required title="Click to rename, Enter to save">
+        </form>
+        <form method="post" action="{{ url_for('checklist_change', sub_id=s.id, action='delete') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="icon-btn sm" title="Remove item"><svg class="i"><use href="#i-trash"/></svg></button>
+        </form>
+        {% else %}
+        <span class="box">{% if s.done %}<svg class="i"><use href="#i-tick"/></svg>{% endif %}</span><span class="chk-title">{{ s.title }}</span>
+        {% endif %}
+      </li>
+      {% else %}<li class="muted empty-chk">No checklist yet. Break this task into small steps.</li>{% endfor %}
+    </ul>
+    {% if can_edit(t) %}
+    <form method="post" action="{{ url_for('checklist_add', task_id=t.id) }}" class="chk-add">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input name="title" placeholder="Add a checklist item…" maxlength="150" required>
+      <button class="btn btn-light sm"><svg class="i"><use href="#i-plus"/></svg> Add</button>
+    </form>
+    {% endif %}
+
+    <h3 class="sub" id="comments">Comments · {{ comments|length }}</h3>
+    <ul class="comments">
+      {% for c in comments %}
+      <li>{{ m.avatar(c.name, c.color) }}<div class="bubble"><div><b>{{ c.name }}</b> <small>{{ c.created_at|ago }}{% if c.edited_at %} · edited{% endif %}</small>
+        {% if user.role == 'admin' or c.user_id == user.id %}
+        <form method="post" action="{{ url_for('comment_delete', comment_id=c.id) }}" class="c-del" data-confirm="Delete this comment?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button title="Delete comment"><svg class="i"><use href="#i-trash"/></svg></button></form>{% endif %}
+        {% if c.user_id == user.id %}<button type="button" class="c-edit-btn" title="Edit comment"><svg class="i"><use href="#i-edit"/></svg></button>{% endif %}
+        </div><p>{{ c.body }}</p>
+        {% if c.user_id == user.id %}
+        <form method="post" action="{{ url_for('comment_edit', comment_id=c.id) }}" class="c-edit" hidden>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <textarea name="body" rows="2" required maxlength="2000">{{ c.body }}</textarea>
+          <div class="form-actions"><button type="button" class="btn btn-ghost sm c-cancel">Cancel</button><button class="btn btn-primary sm">Save</button></div>
+        </form>{% endif %}
+        </div></li>
+      {% else %}<li class="muted">No comments yet. Start the conversation.</li>{% endfor %}
+    </ul>
+    <form method="post" action="{{ url_for('task_comment', task_id=t.id) }}" class="comment-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {{ m.avatar(user.name, user.color) }}
+      <textarea name="body" rows="2" placeholder="Write a comment…" required maxlength="2000"></textarea>
+      <button class="btn btn-primary">Send</button>
+    </form>
+  </section>
+
+  <aside>
+    <section class="card props">
+      <dl>
+        <dt>Assignee</dt><dd><span class="who">{{ m.avatar(t.assignee_name, t.assignee_color, 'sm') }}{{ t.assignee_name or 'Unassigned' }}</span></dd>
+        <dt>Due date</dt><dd>{% if t.due_date %}{{ t.due_date|nice_date }} {{ m.due(t) }}{% else %}—{% endif %}</dd>
+        <dt>Project</dt><dd>{{ m.project_tag(t) or 'No project' }}</dd>
+        <dt>Created by</dt><dd>{{ t.creator_name }}</dd>
+        <dt>Created</dt><dd>{{ t.created_at[:10]|nice_date }}</dd>
+        <dt>Last update</dt><dd>{{ t.updated_at|ago }}</dd>
+        {% if t.completed_at %}<dt>Completed</dt><dd class="green">{{ t.completed_at[:10]|nice_date }}</dd>{% endif %}
+      </dl>
+    </section>
+    <section class="card">
+      <h3 class="sub nomt">History</h3>
+      <ul class="feed small">
+        {% for a in history %}<li>{{ m.avatar(a.name, a.color, 'xs') }}<div>{{ m.activity_text(a) }}<small>{{ a.created_at|ago }}</small></div></li>{% endfor %}
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}

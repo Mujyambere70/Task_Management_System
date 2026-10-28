@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="{{ csrf_token }}">
+<title>{% block title %}TaskFlow{% endblock %} · {{ settings.workspace_name if settings else 'TaskFlow' }}</title>
+<link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+{% include "_icons.html" %}
+{% block page %}
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="{{ url_for('dashboard') }}">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" width="34" height="34">
+      <span>{{ settings.workspace_name }}</span>
+    </a>
+    <a class="btn btn-primary btn-block new-task" href="{{ url_for('task_new') }}"><svg class="i"><use href="#i-plus"/></svg> New task</a>
+    {% set ep = request.endpoint %}
+    <nav class="nav">
+      <a href="{{ url_for('dashboard') }}" class="{{ 'on' if ep == 'dashboard' }}"><svg class="i"><use href="#i-home"/></svg> Dashboard</a>
+      <a href="{{ url_for('my_tasks') }}" class="{{ 'on' if ep == 'task_list' and request.args.get('assignee') == user.id|string }}"><svg class="i"><use href="#i-check"/></svg> My tasks</a>
+      <a href="{{ url_for('task_list', creator=user.id) }}" class="{{ 'on' if ep == 'task_list' and request.args.get('creator') == user.id|string }}"><svg class="i"><use href="#i-edit"/></svg> Created by me</a>
+      <a href="{{ url_for('board') }}" class="{{ 'on' if ep == 'board' }}"><svg class="i"><use href="#i-board"/></svg> Board</a>
+      <a href="{{ url_for('task_list') }}" class="{{ 'on' if ep in ('task_list','task_detail','task_edit','task_new') and request.args.get('assignee') != user.id|string and request.args.get('creator') != user.id|string }}"><svg class="i"><use href="#i-list"/></svg> All tasks</a>
+      <a href="{{ url_for('calendar_view') }}" class="{{ 'on' if ep == 'calendar_view' }}"><svg class="i"><use href="#i-calendar"/></svg> Calendar</a>
+      <a href="{{ url_for('reports') }}" class="{{ 'on' if ep == 'reports' }}"><svg class="i"><use href="#i-chart"/></svg> Reports</a>
+      <a href="{{ url_for('team') }}" class="{{ 'on' if ep == 'team' }}"><svg class="i"><use href="#i-users"/></svg> Team</a>
+      {% if user.role == 'admin' %}<a href="{{ url_for('admin_panel') }}" class="{{ 'on' if ep == 'admin_panel' }}"><svg class="i"><use href="#i-settings"/></svg> Admin panel</a>{% endif %}
+    </nav>
+    <div class="nav-title">Projects <a href="{{ url_for('projects') }}" title="All projects">View all</a></div>
+    <nav class="nav projects-nav">
+      {% for p in nav_projects %}
+      <a href="{{ url_for('board', project=p.id) }}" class="{{ 'on' if request.args.get('project') == p.id|string }}">
+        <i class="dot" style="background:{{ p.color }}"></i> <span>{{ p.name }}</span> <em>{{ p.total - p.done }}</em></a>
+      {% endfor %}
+    </nav>
+    <div class="made-by">Designed &amp; developed by <a href="https://github.com/Mujyambere70" target="_blank" rel="noopener">Jean Michel Mujyambere</a></div>
+    <div class="side-foot">
+      <a class="me" href="{{ url_for('profile') }}">
+        <span class="avatar" style="background:{{ user.color }}">{{ user.name|initials }}</span>
+        <span><b>{{ user.name }}</b><small>{{ user.job_title or user.role|capitalize }}</small></span>
+      </a>
+      <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="icon-btn" title="Sign out"><svg class="i"><use href="#i-logout"/></svg></button></form>
+    </div>
+  </aside>
+  <div class="overlay" id="overlay"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"><svg class="i"><use href="#i-menu"/></svg></button>
+      <form class="search" action="{{ url_for('task_list') }}">
+        <svg class="i"><use href="#i-search"/></svg>
+        <input name="q" placeholder="Search tasks…" value="{{ request.args.get('q', '') if request.endpoint == 'task_list' }}">
+        <kbd>/</kbd>
+      </form>
+      <div class="top-right">
+        <span class="today">{{ today.strftime('%A, %d %B') }}</span>
+        {% if user.role == 'admin' %}<span class="badge badge-admin">Admin</span>{% endif %}
+      </div>
+    </header>
+
+    <div class="content">
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% if msgs %}<div class="toasts">{% for cat, m in msgs %}<div class="toast {{ cat }}">{{ m }}<button class="x" aria-label="Close">×</button></div>{% endfor %}</div>{% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% endblock %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

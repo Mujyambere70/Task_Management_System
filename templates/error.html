@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block page %}
+<div class="error-page">
+  <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" width="56" height="56">
+  <b class="code">{{ code }}</b>
+  <h1>{{ title }}</h1>
+  <p class="muted">{{ text }}</p>
+  <a class="btn btn-primary" href="{{ url_for('dashboard') }}">Back to dashboard</a>
+</div>
+{% endblock %}

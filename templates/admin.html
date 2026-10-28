@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Admin panel{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Admin panel</h1><p class="muted">Manage the workspace, people, data and your own account</p></div>
+  <div class="actions">
+    <a class="btn btn-light" href="{{ url_for('team') }}"><svg class="i"><use href="#i-users"/></svg> Manage team</a>
+    <a class="btn btn-light" href="{{ url_for('projects') }}"><svg class="i"><use href="#i-folder"/></svg> Manage projects</a>
+    <a class="btn btn-primary" href="{{ url_for('profile') }}"><svg class="i"><use href="#i-edit"/></svg> My personal details</a>
+  </div>
+</div>
+
+<div class="stat-chips">
+  {% for t, n in counts.items() %}<div><b>{{ n }}</b><small>{{ t }}</small></div>{% endfor %}
+</div>
+
+<div class="tabs admin-tabs">
+  {% for key, label in [('settings', 'Workspace settings'), ('data', 'Database'), ('maintenance', 'Maintenance')] %}
+  <a href="{{ url_for('admin_panel', tab=key, table=table if key == 'data' else None) }}" class="{{ 'on' if tab == key }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if tab == 'settings' %}
+<section class="card settings-form">
+  <h2>Workspace settings</h2>
+  <form method="post" action="{{ url_for('admin_settings') }}" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Workspace name <small>shown in the sidebar, login page and browser tab</small>
+      <input name="workspace_name" value="{{ settings.workspace_name }}" required minlength="2" maxlength="40"></label>
+    <label class="toggle"><span>Allow new people to sign up<small>If off, only admins can add members (Team → Add member).</small></span>
+      <input type="checkbox" name="allow_registration" value="1" {{ 'checked' if settings.allow_registration == '1' }}></label>
+    <label>Default priority for new tasks
+      <select name="default_priority">{% for k, n in PRIORITIES %}<option value="{{ k }}" {{ 'selected' if settings.default_priority == k }}>{{ n }}</option>{% endfor %}</select></label>
+    <div class="form-actions"><button class="btn btn-primary">Save settings</button></div>
+  </form>
+</section>
+
+{% elif tab == 'data' %}
+<div class="db-tabs">
+  {% for t, n in counts.items() %}<a href="{{ url_for('admin_panel', tab='data', table=t) }}" class="{{ 'on' if t == table }}">{{ t }}<em>{{ n }}</em></a>{% endfor %}
+</div>
+<div class="card flush">
+  <div class="card-head" style="padding:14px 16px;margin:0">
+    <h2>{{ table }} <small class="muted">· showing {{ rows|length }} of {{ total }} rows (newest first){% if table == 'users' %} · passwords hidden{% endif %}</small></h2>
+    <a class="btn btn-light sm" href="{{ url_for('admin_table_csv', table=table) }}"><svg class="i"><use href="#i-download"/></svg> CSV</a>
+  </div>
+  <div class="db-wrap">
+    <table class="table">
+      <thead><tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for r in rows %}<tr>{% for v in r %}<td class="{{ 'null' if v is none }}" title="{{ v if v is not none }}">{{ 'NULL' if v is none else v }}</td>{% endfor %}</tr>
+        {% else %}<tr><td colspan="{{ cols|length or 1 }}"><div class="empty">This table is empty.</div></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<p class="muted small" style="margin-top:10px">Read-only view. To add, edit or delete records use the normal pages (tasks, projects, team) — they check the rules and write everything to the activity log.</p>
+
+{% else %}
+<section class="card">
+  <h2>Maintenance</h2>
+  <div class="danger-list">
+    <div class="danger-item">
+      <div><b>Clear the activity log</b><p class="muted small">Remove old activity entries. Tasks and comments are not changed.</p></div>
+      <form method="post" action="{{ url_for('admin_maintenance') }}" data-confirm="Remove these activity entries?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="clear_activity">
+        <select name="days"><option value="30">Older than 30 days</option><option value="7">Older than 7 days</option><option value="0">Everything</option></select>
+        <button class="btn btn-light sm">Clear log</button>
+      </form>
+    </div>
+    <div class="danger-item">
+      <div><b>Remove old completed tasks</b><p class="muted small">Delete tasks that were finished a long time ago (with their comments).</p></div>
+      <form method="post" action="{{ url_for('admin_maintenance') }}" data-confirm="Delete these completed tasks? This cannot be undone.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="clean_tasks">
+        <select name="days"><option value="90">Done over 90 days ago</option><option value="30">Done over 30 days ago</option><option value="0">All completed tasks</option></select>
+        <button class="btn btn-light sm">Remove</button>
+      </form>
+    </div>
+    <div class="danger-item">
+      <div><b>Back up the data</b><p class="muted small">Download any table as CSV (Excel) from the Database tab, or copy the file <code>taskflow.db</code>.</p></div>
+      <a class="btn btn-light sm" href="{{ url_for('admin_panel', tab='data', table='tasks') }}">Open database</a>
+    </div>
+    <div class="danger-item red">
+      <div><b class="red">Reset everything to demo data</b><p class="muted small">Deletes ALL users, projects, tasks and comments and loads the demo team again. You will be signed out.</p></div>
+      <form method="post" action="{{ url_for('admin_maintenance') }}" data-confirm="This deletes all data. Are you sure?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="reset_demo">
+        <input name="confirm" placeholder="Type RESET" required autocomplete="off">
+        <button class="btn btn-danger sm">Reset data</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

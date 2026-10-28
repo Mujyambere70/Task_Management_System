@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Projects{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Projects</h1><p class="muted">{{ projects|rejectattr('archived')|list|length }} active projects · anyone can create a project; the owner and admins can change or delete it</p></div>
+  <button class="btn btn-primary" data-open="projectDialog" data-reset><svg class="i"><use href="#i-plus"/></svg> New project</button>
+</div>
+<div class="proj-grid">
+  {% for p in projects %}
+  <section class="card proj-card {{ 'archived' if p.archived }}" style="--c:{{ p.color }}">
+    <div class="proj-top">
+      <span class="proj-ic"><svg class="i"><use href="#i-folder"/></svg></span>
+      {% if p.archived %}<span class="pill">Archived</span>{% endif %}
+    </div>
+    <h2><a href="{{ url_for('board', project=p.id) }}">{{ p.name }}</a></h2>
+    <p class="muted">{{ p.description or 'No description' }}</p>
+    <small class="muted">Owner: <b>{{ 'You' if p.created_by == user.id else (p.owner_name or '—') }}</b></small>
+    <div class="proj-stats"><span><b>{{ p.total }}</b> tasks</span><span><b>{{ p.total - p.done }}</b> open</span><span><b>{{ p.progress }}%</b> done</span></div>
+    <div class="progress"><i style="width:{{ p.progress }}%;background:{{ p.color }}"></i></div>
+    <div class="proj-actions">
+      <a class="btn btn-light sm" href="{{ url_for('board', project=p.id) }}">Open board</a>
+      {% if can_manage(p) %}
+      <button class="btn btn-ghost sm" data-open="projectDialog" data-id="{{ p.id }}" data-name="{{ p.name }}" data-description="{{ p.description }}" data-color="{{ p.color }}">Edit</button>
+      <form method="post" action="{{ url_for('project_archive', project_id=p.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-ghost sm">{{ 'Restore' if p.archived else 'Archive' }}</button></form>
+      <button class="btn btn-danger-ghost sm" data-open="deleteProject" data-delete-id="{{ p.id }}" data-delete-name="{{ p.name }}" data-delete-total="{{ p.total }}">Delete</button>
+      {% endif %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+
+{% if true %}
+<dialog id="projectDialog" class="dialog">
+  <form method="post" action="{{ url_for('project_save') }}" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="id">
+    <h2>Project</h2>
+    <label>Name<input name="name" required minlength="2"></label>
+    <label>Description<textarea name="description" rows="3"></textarea></label>
+    <label>Color</label>
+    <div class="swatches">{% for c in COLORS %}<label><input type="radio" name="color" value="{{ c }}" {{ 'checked' if loop.first }}><i style="background:{{ c }}"></i></label>{% endfor %}</div>
+    <div class="form-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary">Save project</button></div>
+  </form>
+</dialog>
+<dialog id="deleteProject" class="dialog">
+  <form method="post" class="form" data-base="{{ url_for('project_delete', project_id=0)[:-9] }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2>Delete project “<span class="dp-name"></span>”?</h2>
+    <p class="muted">This project has <b class="dp-total"></b> tasks. What should happen to them?</p>
+    <label class="radio"><input type="radio" name="mode" value="keep" checked> <span><b>Keep the tasks</b><br><small>They stay in the task list without a project.</small></span></label>
+    <label class="radio"><input type="radio" name="mode" value="tasks"> <span><b>Delete the tasks too</b><br><small>The tasks and their comments are removed forever.</small></span></label>
+    <div class="form-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-danger">Delete project</button></div>
+  </form>
+</dialog>
+{% endif %}
+{% endblock %}
