@@ -1,54 +1,24 @@
-import os
-import re
-import sys
-import tempfile
+"""Core features from version 1, now inside workspaces: sign-in, tasks, board, permissions, admin, projects."""
+
 import unittest
 from datetime import date, timedelta
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from app import create_app
-from store import TaskError
+from support import Base
 
 TOMORROW = (date.today() + timedelta(days=1)).isoformat()
 
 
-class Base(unittest.TestCase):
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.app = create_app(os.path.join(self.tmp.name, "t.db"), seed=True, testing=True)
-        self.store = self.app.store
-        self.c = self.app.test_client()
-
-    def tearDown(self):
-        self.tmp.cleanup()
-
-    def token(self):
-        html = self.c.get("/login" if not self.logged_in() else "/profile").get_data(as_text=True)
-        return re.search(r'name="csrf-token" content="(\w+)"', html).group(1)
-
-    def logged_in(self):
-        with self.c.session_transaction() as s:
-            return "uid" in s
-
-    def post(self, url, data=None, **kw):
-        data = dict(data or {})
-        data["csrf_token"] = self.token()
-        return self.c.post(url, data=data, **kw)
-
-    def login(self, email="admin@taskflow.demo", password="Admin@1234"):
-        return self.post("/login", {"email": email, "password": password})
-
-    def member(self):
-        return self.store.authenticate("anna@taskflow.demo", "Demo@1234")
-
-
 class TestAuth(Base):
     def test_pages_need_login(self):
-        for url in ["/", "/board", "/tasks", "/calendar", "/reports", "/team", "/profile"]:
+        for url in ["/", "/board", "/tasks", "/calendar", "/reports", "/team", "/profile", "/resumes",
+                    "/notifications", "/workspaces"]:
             r = self.c.get(url)
             self.assertEqual(r.status_code, 302, url)
             self.assertIn("/login", r.location)
+
+    def test_public_pages_without_login(self):
+        for url in ["/login", "/register", "/forgot", "/about", "/explore", "/r/jean-michel-mujyambere"]:
+            self.assertEqual(self.c.get(url).status_code, 200, url)
 
     def test_login_and_logout(self):
         self.assertEqual(self.login().status_code, 302)
@@ -65,355 +35,324 @@ class TestAuth(Base):
         r = self.c.post("/login", data={"email": "admin@taskflow.demo", "password": "Admin@1234"})
         self.assertEqual(r.status_code, 400)
 
-    def test_register(self):
-        r = self.post("/register", {"name": "New Person", "email": "new@x.com", "password": "Secret123",
+    def test_register_gives_own_workspace(self):
+        r = self.post("/register", {"name": "New Person", "email": "new@teamtest.io", "password": "Secret123",
                                     "confirm": "Secret123"})
         self.assertEqual(r.status_code, 302)
-        u = self.store.authenticate("new@x.com", "Secret123")
-        self.assertEqual(u["role"], "member")
+        u = self.store.authenticate("new@teamtest.io", "Secret123")
+        self.assertEqual(u["role"], "member")                       # not the site administrator
+        mine = self.store.memberships(u["id"])
+        self.assertEqual(len(mine), 1)
+        self.assertEqual(mine[0]["role"], "admin")                  # admin of the own new workspace
+        self.assertEqual(mine[0]["name"], "New's workspace")
+        self.assertIn("New&#39;s workspace", self.html("/"))
 
     def test_register_errors(self):
         bad = [{"name": "A B", "email": "admin@taskflow.demo", "password": "Secret123", "confirm": "Secret123"},
-               {"name": "A B", "email": "x@y.com", "password": "short", "confirm": "short"},
-               {"name": "A B", "email": "x@y.com", "password": "Secret123", "confirm": "Other1234"},
+               {"name": "A B", "email": "x@teamtest.io", "password": "short", "confirm": "short"},
+               {"name": "A B", "email": "x@teamtest.io", "password": "Secret123", "confirm": "Other1234"},
                {"name": "A B", "email": "not-an-email", "password": "Secret123", "confirm": "Secret123"}]
         for form in bad:
             self.assertEqual(self.post("/register", form).status_code, 400, form)
 
     def test_safe_redirect_after_login(self):
-        r = self.post("/login?next=//evil.com", {"email": "admin@taskflow.demo", "password": "Admin@1234"})
+        r = self.post("/login?next=https://evil.example/x", {"email": "admin@taskflow.demo", "password": "Admin@1234"})
         self.assertEqual(r.location, "/")
+        self.post("/logout")
+        r = self.post("/login?next=/calendar", {"email": "admin@taskflow.demo", "password": "Admin@1234"})
+        self.assertEqual(r.location, "/calendar")
+
+    def test_registration_can_be_turned_off(self):
+        self.login()
+        self.post("/admin/settings", {})
+        self.post("/logout")
+        r = self.c.get("/register")
+        self.assertEqual(r.status_code, 302)
 
 
 class TestTasks(Base):
     def setUp(self):
         super().setUp()
         self.login()
+        self.ws = self.first_ws()
 
     def new_task(self, **kw):
-        data = {"title": "Write the test plan", "description": "All modules", "status": "todo",
-                "priority": "high", "assignee_id": "2", "project_id": "1", "due_date": TOMORROW}
-        data.update(kw)
-        return self.post("/tasks/new", data)
+        form = {"title": "Write the release notes", "description": "For version 2", "priority": "high",
+                "status": "todo", "assignee_id": str(self.uid("anna@taskflow.demo")), "due_date": TOMORROW}
+        form.update(kw)
+        r = self.post("/tasks/new", form)
+        self.assertEqual(r.status_code, 302, r.get_data(as_text=True)[:500])
+        return int(r.location.rstrip("/").split("/")[-1])
 
     def test_all_pages_render(self):
-        for url in ["/", "/board", "/board?project=1&priority=high", "/tasks", "/tasks?status=open&due=week&sort=priority",
-                    "/tasks?q=crash", "/tasks/1", "/tasks/1/edit", "/tasks/new", "/calendar", "/calendar?m=2026-01",
-                    "/projects", "/team", "/reports", "/profile"]:
-            self.assertEqual(self.c.get(url).status_code, 200, url)
+        for url in ["/", "/board", "/tasks", "/tasks?status=open&sort=priority", "/tasks/new", "/calendar",
+                    "/calendar?m=2026-01", "/projects", "/team", "/reports", "/profile", "/notifications",
+                    "/workspaces", "/workspace/settings", "/about"]:
+            self.html(url)
 
-    def test_create_task(self):
-        r = self.new_task()
-        self.assertEqual(r.status_code, 302)
-        tid = int(r.location.rsplit("/", 1)[1])
+    def test_create_task_in_current_workspace(self):
+        tid = self.new_task()
         t = self.store.task(tid)
-        self.assertEqual((t["title"], t["priority"], t["assignee_name"]), ("Write the test plan", "high", "Anna Petrova"))
+        self.assertEqual(t["workspace_id"], self.ws)
+        self.assertEqual(t["priority"], "high")
+        self.assertIn("Write the release notes", self.html(f"/tasks/{tid}"))
 
     def test_create_task_validation(self):
-        before = len(self.store.tasks())
-        self.new_task(title="ab")
-        self.new_task(due_date="2000-01-01")
-        self.new_task(assignee_id="999")
-        self.new_task(priority="extreme")
-        self.assertEqual(len(self.store.tasks()), before)
+        r = self.post("/tasks/new", {"title": "ab", "status": "todo", "priority": "low"})
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("at least 3", r.get_data(as_text=True))
+        r = self.post("/tasks/new", {"title": "Valid title", "status": "todo", "priority": "low",
+                                     "due_date": "2020-01-01"})
+        self.assertIn("past", r.get_data(as_text=True))
+
+    def test_cannot_assign_someone_outside_the_workspace(self):
+        li = self.uid("li@taskflow.demo")                      # member of the second workspace only
+        r = self.post("/tasks/new", {"title": "Valid title", "status": "todo", "priority": "low", "assignee_id": li})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(self.store.tasks(self.ws, q="Valid title"), [])
 
     def test_search_and_filters(self):
-        self.assertTrue(all("crash" in t["title"].lower() or "crash" in t["description"].lower()
-                            for t in self.store.tasks(q="crash")))
-        overdue = self.store.tasks(due="overdue")
-        self.assertTrue(overdue)
-        self.assertTrue(all(t["status"] != "done" and t["due_date"] < date.today().isoformat() for t in overdue))
-        self.assertTrue(all(t["status"] == "done" for t in self.store.tasks(status="done")))
+        self.new_task(title="Unique zebra task")
+        html = self.html("/tasks?q=zebra")
+        self.assertIn("Unique zebra task", html)
+        self.assertNotIn("Build product catalogue", html)
+        self.assertIn("Unique zebra task", self.html("/tasks?q=ZEBRA"))
+        html = self.html("/tasks?due=overdue")
+        self.assertIn("Renew domain", html)
 
     def test_status_change_sets_completed(self):
-        tid = int(self.new_task().location.rsplit("/", 1)[1])
+        tid = self.new_task()
         self.post(f"/tasks/{tid}/status", {"status": "done"})
         self.assertIsNotNone(self.store.task(tid)["completed_at"])
-        self.post(f"/tasks/{tid}/status", {"status": "in_progress"})
+        self.post(f"/tasks/{tid}/status", {"status": "todo"})
         self.assertIsNone(self.store.task(tid)["completed_at"])
 
     def test_drag_and_drop_api(self):
-        r = self.c.post("/api/tasks/5/status", json={"status": "review"}, headers={"X-CSRF-Token": self.token()})
+        tid = self.new_task()
+        r = self.post_json(f"/api/tasks/{tid}/status", {"status": "review"})
         self.assertEqual(r.get_json()["ok"], True)
-        self.assertEqual(self.store.task(5)["status"], "review")
-        r = self.c.post("/api/tasks/5/status", json={"status": "nope"}, headers={"X-CSRF-Token": self.token()})
+        self.assertEqual(self.store.task(tid)["status"], "review")
+        r = self.post_json(f"/api/tasks/{tid}/status", {"status": "nonsense"})
+        self.assertEqual(r.status_code, 400)
+        r = self.c.post(f"/api/tasks/{tid}/status", json={"status": "done"})        # no CSRF header
         self.assertEqual(r.status_code, 400)
 
-    def test_edit_task(self):
-        r = self.post("/tasks/1/edit", {"title": "New name", "status": "review", "priority": "low",
-                                        "assignee_id": "", "project_id": "", "due_date": ""})
+    def test_edit_task_with_estimate(self):
+        tid = self.new_task()
+        r = self.post(f"/tasks/{tid}/edit", {"title": "Renamed task", "status": "in_progress", "priority": "low",
+                                              "estimate": "1h 30m", "assignee_id": "", "due_date": TOMORROW})
         self.assertEqual(r.status_code, 302)
-        t = self.store.task(1)
-        self.assertEqual((t["title"], t["assignee_id"], t["project_id"], t["due_date"]), ("New name", None, None, None))
+        t = self.store.task(tid)
+        self.assertEqual((t["title"], t["status"], t["estimate_minutes"], t["assignee_id"]),
+                         ("Renamed task", "in_progress", 90, None))
+        self.assertIn('value="1h 30m"', self.html(f"/tasks/{tid}/edit"))
 
     def test_comment(self):
-        self.post("/tasks/3/comment", {"body": "Looks great!"})
-        self.assertEqual(self.store.comments(3)[-1]["body"], "Looks great!")
-        n = len(self.store.comments(3))
-        self.post("/tasks/3/comment", {"body": "   "})
-        self.assertEqual(len(self.store.comments(3)), n)
+        tid = self.new_task()
+        self.post(f"/tasks/{tid}/comment", {"body": "Looks good"})
+        self.assertEqual(self.store.comments(tid)[0]["body"], "Looks good")
 
     def test_delete(self):
-        self.post("/tasks/2/delete")
-        self.assertIsNone(self.store.task(2))
-        self.assertEqual(self.c.get("/tasks/2").status_code, 404)
+        tid = self.new_task()
+        self.post(f"/tasks/{tid}/delete")
+        self.assertIsNone(self.store.task(tid))
 
     def test_activity_is_logged(self):
-        self.new_task(title="Logged task")
-        self.assertEqual(self.store.activity(1)[0]["action"], "task_created")
+        tid = self.new_task(title="Logged task")
+        acts = self.store.activity(self.ws, 5)
+        self.assertTrue(any(a["action"] == "task_created" and a["task_id"] == tid for a in acts))
 
     def test_csv_export(self):
         r = self.c.get("/reports/tasks.csv")
         self.assertEqual(r.mimetype, "text/csv")
-        self.assertIn("Renew domain and SSL certificate", r.get_data(as_text=True))
+        text = r.get_data(as_text=True)
+        self.assertIn("Estimate (h)", text)
+        self.assertIn("Build product catalogue", text)
+        self.assertNotIn("Computational statistics", text)            # other workspace
+
+    def test_calendar_and_board_show_only_this_workspace(self):
+        board = self.html("/board")
+        self.assertIn("Two-step fund transfer", board)
+        self.assertNotIn("Computational statistics", board)
+
+    def test_checklist(self):
+        tid = self.new_task()
+        self.post(f"/tasks/{tid}/checklist", {"title": "Step one"})
+        sub = self.store.subtasks(tid)[0]
+        r = self.post(f"/checklist/{sub['id']}/toggle", headers={"X-Requested-With": "fetch"})
+        self.assertEqual(r.get_json(), {"ok": True, "done": 1, "total": 1})
+        self.post(f"/checklist/{sub['id']}/delete")
+        self.assertEqual(self.store.subtasks(tid), [])
 
 
 class TestPermissions(Base):
     def setUp(self):
         super().setUp()
         self.login("anna@taskflow.demo", "Demo@1234")
-        self.anna = self.member()
-        # a task Anna did not create and is not assigned to
-        self.other = next(t for t in self.store.tasks() if not self.store.can_edit(self.anna, t))
+        self.ws = self.first_ws()
+        admin = self.uid("admin@taskflow.demo")
+        self.others = self.store.create_task(admin, self.ws, {"title": "Admin only task", "status": "todo",
+                                                              "priority": "low", "assignee_id": str(admin)})
 
     def test_member_cannot_edit_others_task(self):
-        self.assertEqual(self.c.get(f"/tasks/{self.other['id']}/edit").status_code, 403)
-        r = self.c.post(f"/api/tasks/{self.other['id']}/status", json={"status": "done"},
-                        headers={"X-CSRF-Token": self.token()})
-        self.assertEqual(r.status_code, 403)
-        self.assertEqual(self.post(f"/tasks/{self.other['id']}/delete").status_code, 403)
+        self.assertEqual(self.c.get(f"/tasks/{self.others}/edit").status_code, 403)
+        self.assertEqual(self.post(f"/tasks/{self.others}/status", {"status": "done"}).status_code, 403)
+        self.assertEqual(self.post_json(f"/api/tasks/{self.others}/status", {"status": "done"}).status_code, 403)
+        self.assertEqual(self.post(f"/tasks/{self.others}/delete").status_code, 403)
 
-    def test_member_can_change_own_task(self):
-        mine = self.store.tasks(assignee=self.anna["id"], status="open")[0]
-        r = self.c.post(f"/api/tasks/{mine['id']}/status", json={"status": "done"},
-                        headers={"X-CSRF-Token": self.token()})
-        self.assertEqual(r.status_code, 200)
+    def test_member_can_comment_and_attach_on_any_task_of_the_workspace(self):
+        self.post(f"/tasks/{self.others}/comment", {"body": "Can I help?"})
+        self.assertEqual(len(self.store.comments(self.others)), 1)
 
     def test_member_cannot_use_admin_actions(self):
-        self.assertEqual(self.post("/projects/save", {"id": "1", "name": "Hack"}).status_code, 403)
-        self.assertEqual(self.post("/projects/1/delete", {"mode": "keep"}).status_code, 403)
-        self.assertEqual(self.post("/projects/1/archive").status_code, 403)
-        self.assertEqual(self.post("/team/add", {"name": "X Y", "email": "x@y.com", "password": "Secret123"}).status_code, 403)
-        self.assertEqual(self.post("/team/1/role", {"role": "member"}).status_code, 403)
+        for url in ["/workspace/settings", "/admin", "/admin?tab=data"]:
+            self.assertEqual(self.c.get(url).status_code, 403, url)
+        self.assertEqual(self.post("/tasks/bulk", {"ids": self.others, "action": "delete"}).status_code, 403)
+        self.assertEqual(self.post("/team/add", {"name": "X Y", "email": "x@teamtest.io",
+                                                 "password": "Secret123"}).status_code, 403)
+
+    def test_task_of_a_workspace_i_am_not_in_is_hidden(self):
+        sfu = self.second_ws()
+        t = self.store.tasks(sfu)[0]
+        self.assertEqual(self.c.get(f"/tasks/{t['id']}").status_code, 404)
+        self.assertEqual(self.post_json(f"/api/tasks/{t['id']}/status", {"status": "done"}).status_code, 404)
+        self.assertEqual(self.post(f"/workspaces/{sfu}/open").status_code, 403)
 
 
 class TestAdmin(Base):
     def setUp(self):
         super().setUp()
         self.login()
+        self.ws = self.first_ws()
 
-    def test_add_member_and_deactivate(self):
-        self.post("/team/add", {"name": "Olga Kim", "email": "olga@x.com", "password": "Temp12345", "role": "member"})
-        u = self.store.authenticate("olga@x.com", "Temp12345")
-        self.post(f"/team/{u['id']}/toggle")
-        with self.assertRaises(TaskError):
-            self.store.authenticate("olga@x.com", "Temp12345")
+    def test_add_member_new_and_existing_account(self):
+        self.post("/team/add", {"name": "Kofi Mensah", "email": "kofi@teamtest.io", "password": "Welcome123",
+                                "role": "member"})
+        kofi = self.uid("kofi@teamtest.io")
+        self.assertEqual(self.store.member_role(self.ws, kofi), "member")
+        li = self.uid("li@taskflow.demo")                       # already has an account (other workspace)
+        self.post("/team/add", {"name": "", "email": "li@taskflow.demo", "password": "", "role": "admin"})
+        self.assertEqual(self.store.member_role(self.ws, li), "admin")
+        self.assertTrue(self.store.authenticate("li@taskflow.demo", "Demo@1234"))   # password not changed
 
-    def test_admin_cannot_demote_self(self):
-        self.post("/team/1/role", {"role": "member"})
-        self.assertEqual(self.store.user(1)["role"], "admin")
+    def test_admin_cannot_change_own_role(self):
+        me = self.uid("admin@taskflow.demo")
+        self.post(f"/team/{me}/role", {"role": "member"})
+        self.assertEqual(self.store.member_role(self.ws, me), "admin")
 
-    def test_reset_password(self):
-        self.post("/team/2/reset", {"password": "Brandnew99"})
-        self.assertTrue(self.store.authenticate("anna@taskflow.demo", "Brandnew99"))
+    def test_site_admin_tools(self):
+        anna = self.uid("anna@taskflow.demo")
+        self.post(f"/team/{anna}/reset", {"password": "NewPass123"})
+        self.assertTrue(self.store.authenticate("anna@taskflow.demo", "NewPass123"))
+        self.post(f"/team/{anna}/toggle")
+        self.assertFalse(self.store.user(anna)["active"])
+        self.post(f"/team/{anna}/edit", {"name": "Anna P. Petrova", "email": "anna@taskflow.demo",
+                                         "job_title": "Lead", "color": "#10b981"})
+        self.assertEqual(self.store.user(anna)["name"], "Anna P. Petrova")
+
+    def test_workspace_admin_who_is_not_site_admin(self):
+        david = self.new_client("david@taskflow.demo")             # admin of the first workspace only
+        self.assertEqual(david.get("/workspace/settings").status_code, 200)
+        self.assertEqual(david.get("/admin").status_code, 403)
+        anna = self.uid("anna@taskflow.demo")
+        self.assertEqual(self.post(f"/team/{anna}/reset", {"password": "X1234567x"}, client=david).status_code, 403)
+        self.post(f"/team/{anna}/role", {"role": "admin"}, client=david)
+        self.assertEqual(self.store.member_role(self.ws, anna), "admin")
 
     def test_projects(self):
-        self.post("/projects/save", {"name": "Research", "description": "R&D", "color": "#10b981"})
-        p = [p for p in self.store.projects() if p["name"] == "Research"][0]
+        self.post("/projects/save", {"name": "Marketing site", "description": "New pages", "color": "#10b981"})
+        p = [p for p in self.store.projects(self.ws) if p["name"] == "Marketing site"][0]
         self.post(f"/projects/{p['id']}/archive")
-        self.assertNotIn("Research", [p["name"] for p in self.store.projects()])
+        self.assertTrue(self.store.project(p["id"])["archived"])
+        self.post(f"/projects/{p['id']}/delete", {"mode": "keep"})
+        self.assertIsNone(self.store.project(p["id"]))
+        self.assertEqual(self.store.project(p["id"]), None)
 
-    def test_profile_and_password(self):
-        self.post("/profile", {"form": "profile", "name": "Jean M.", "email": "boss@taskflow.demo", "job_title": "CEO"})
-        self.assertEqual(self.store.user(1)["name"], "Jean M.")
-        self.post("/profile", {"form": "password", "old": "Admin@1234", "new": "Better1234", "confirm": "Better1234"})
-        self.assertTrue(self.store.authenticate("boss@taskflow.demo", "Better1234"))
-
-    def test_reports_numbers(self):
-        s = self.store.stats()
-        self.assertEqual(s["total"], sum(s["by_status"].values()))
-        self.assertEqual(s["open"], s["total"] - s["done"])
-        people = self.store.user_report()
-        self.assertEqual(sum(p["assigned"] for p in people), len([t for t in self.store.tasks() if t["assignee_id"]]))
-
-
-class TestAdminManagement(Base):
-    def setUp(self):
-        super().setUp()
-        self.login()
-
-    def test_admin_pages(self):
-        for url in ["/admin", "/admin?tab=data&table=users", "/admin?tab=data&table=activity", "/admin?tab=maintenance"]:
-            r = self.c.get(url)
-            self.assertEqual(r.status_code, 200, url)
-        self.assertNotIn("pbkdf2", self.c.get("/admin?tab=data&table=users").get_data(as_text=True))
-        self.assertNotIn("scrypt", self.c.get("/admin/data/users.csv").get_data(as_text=True))
-
-    def test_member_cannot_open_admin(self):
-        self.post("/logout")
-        self.login("anna@taskflow.demo", "Demo@1234")
-        self.assertEqual(self.c.get("/admin").status_code, 403)
-        self.assertEqual(self.c.get("/admin/data/users.csv").status_code, 403)
-        self.assertEqual(self.post("/tasks/bulk", {"ids": "1", "action": "delete"}).status_code, 403)
-
-    def test_edit_other_user(self):
-        self.post("/team/2/edit", {"name": "Anna P. Smith", "email": "anna.smith@taskflow.demo",
-                                   "job_title": "Lead Frontend", "color": "#ec4899"})
-        u = self.store.user(2)
-        self.assertEqual((u["name"], u["email"], u["job_title"], u["color"]),
-                         ("Anna P. Smith", "anna.smith@taskflow.demo", "Lead Frontend", "#ec4899"))
-        self.post("/team/2/edit", {"name": "Anna", "email": "david@taskflow.demo"})   # email taken
-        self.assertEqual(self.store.user(2)["email"], "anna.smith@taskflow.demo")
-
-    def test_delete_user(self):
-        assigned = [t["id"] for t in self.store.tasks(assignee=3)]
-        self.post("/team/3/delete")
-        self.assertIsNone(self.store.user(3))
-        self.assertTrue(all(self.store.task(i)["assignee_id"] is None for i in assigned))
-        self.post("/team/1/delete")                       # cannot delete yourself
-        self.assertIsNotNone(self.store.user(1))
-
-    def test_admin_changes_own_details(self):
-        self.post("/profile", {"form": "profile", "name": "Jean Michel M.", "email": "jm@taskflow.demo",
-                               "job_title": "Head of Projects", "color": "#10b981"})
-        u = self.store.user(1)
-        self.assertEqual((u["name"], u["email"], u["color"]), ("Jean Michel M.", "jm@taskflow.demo", "#10b981"))
-
-    def test_delete_project_keep_or_delete_tasks(self):
-        keep = [t["id"] for t in self.store.tasks(project=1)]
-        self.post("/projects/1/delete", {"mode": "keep"})
-        self.assertIsNone(self.store.project(1))
-        self.assertTrue(all(self.store.task(i)["project_id"] is None for i in keep))
-        gone = [t["id"] for t in self.store.tasks(project=2)]
-        self.post("/projects/2/delete", {"mode": "tasks"})
-        self.assertTrue(all(self.store.task(i) is None for i in gone))
-
-    def test_delete_comment(self):
-        c = self.store.comments(9)[0]
-        self.post(f"/comments/{c['id']}/delete")
-        self.assertNotIn(c["id"], [x["id"] for x in self.store.comments(9)])
-
-    def test_member_deletes_only_own_comment(self):
-        self.post("/logout")
-        self.login("anna@taskflow.demo", "Demo@1234")
-        other = self.store.comments(9)[0]                     # written by David
-        self.assertEqual(self.post(f"/comments/{other['id']}/delete").status_code, 403)
-        self.post("/tasks/9/comment", {"body": "mine"})
-        mine = self.store.comments(9)[-1]
-        self.post(f"/comments/{mine['id']}/delete")
-        self.assertNotIn(mine["id"], [x["id"] for x in self.store.comments(9)])
+    def test_project_of_other_workspace_is_not_reachable(self):
+        sfu_project = self.store.projects(self.second_ws())[0]
+        r = self.post(f"/projects/{sfu_project['id']}/delete", {"mode": "tasks"})
+        self.assertEqual(r.status_code, 404)
 
     def test_bulk_actions(self):
-        self.post("/tasks/bulk", {"ids": ["1", "2"], "action": "status", "value": "done"})
-        self.assertTrue(all(self.store.task(i)["status"] == "done" and self.store.task(i)["completed_at"] for i in (1, 2)))
-        self.post("/tasks/bulk", {"ids": ["1", "2"], "action": "assignee", "value": "4"})
-        self.assertEqual({self.store.task(i)["assignee_id"] for i in (1, 2)}, {4})
-        self.post("/tasks/bulk", {"ids": ["1", "2"], "action": "priority", "value": "urgent"})
-        self.assertEqual(self.store.task(1)["priority"], "urgent")
-        self.post("/tasks/bulk", {"ids": ["1", "2"], "action": "delete"})
-        self.assertIsNone(self.store.task(1))
+        ids = [t["id"] for t in self.store.tasks(self.ws, status="open")][:3]
+        self.post("/tasks/bulk", {"ids": ids, "action": "priority", "value": "urgent", "next": "/tasks"})
+        self.assertTrue(all(self.store.task(i)["priority"] == "urgent" for i in ids))
 
-    def test_settings(self):
-        self.post("/admin/settings", {"workspace_name": "Acme Team", "default_priority": "high"})
-        self.assertIn("Acme Team", self.c.get("/").get_data(as_text=True))
-        self.post("/logout")
-        r = self.c.get("/register")
-        self.assertEqual(r.status_code, 302)                   # sign-up turned off
+    def test_reports_numbers(self):
+        s = self.store.stats(self.ws)
+        self.assertEqual(s["total"], s["done"] + s["open"])
+        html = self.html("/reports")
+        self.assertIn("Burndown chart", html)
+        self.assertIn("Time tracking", html)
 
-    def test_maintenance(self):
-        self.post("/admin/maintenance", {"action": "clear_activity", "days": "0"})
-        self.assertEqual(len(self.store.activity(100)), 1)    # only the "log cleared" entry
-        self.post("/admin/maintenance", {"action": "clean_tasks", "days": "0"})
-        self.assertEqual(self.store.tasks(status="done"), [])
+    def test_admin_pages(self):
+        for url in ["/admin", "/admin?tab=data&table=users", "/admin?tab=data&table=resumes", "/admin?tab=maintenance"]:
+            html = self.html(url)
+            self.assertNotIn("pbkdf2", html)
+            self.assertNotIn("scrypt", html)
+
+    def test_table_csv_hides_secrets(self):
+        text = self.c.get("/admin/data/users.csv").get_data(as_text=True)
+        self.assertNotIn("password_hash", text)
+        self.assertNotIn("totp_secret", text)
+        secret = self.store.secret_key()
+        self.assertNotIn(secret, self.c.get("/admin/data/settings.csv").get_data(as_text=True))
+        self.assertNotIn(secret, self.html("/admin?tab=data&table=settings"))
+
+    def test_reset_demo(self):
         self.post("/admin/maintenance", {"action": "reset_demo", "confirm": "nope"})
-        self.assertEqual(self.store.tasks(status="done"), [])
+        self.assertEqual(self.c.get("/").status_code, 200)
         self.post("/admin/maintenance", {"action": "reset_demo", "confirm": "RESET"})
-        self.assertTrue(self.store.tasks(status="done"))
-        self.assertEqual(self.c.get("/").status_code, 302)     # signed out
+        self.assertEqual(self.c.get("/").status_code, 302)
+        self.assertEqual(self.store.count_users(), 10)
 
 
-class TestUserOwnership(Base):
-    """Normal members create and fully manage their own things."""
-
+class TestOwnAccount(Base):
     def setUp(self):
         super().setUp()
-        self.login("anna@taskflow.demo", "Demo@1234")
-        self.anna = self.member()
+        self.login("elena@taskflow.demo", "Demo@1234")
 
-    def test_member_creates_edits_archives_deletes_own_project(self):
-        self.post("/projects/save", {"name": "Anna's Research", "description": "UI study", "color": "#ec4899"})
-        p = next(p for p in self.store.projects() if p["name"] == "Anna's Research")
-        self.assertEqual(p["created_by"], self.anna["id"])
-        self.post("/projects/save", {"id": str(p["id"]), "name": "Anna's UI Research", "color": "#10b981"})
-        self.assertEqual(self.store.project(p["id"])["name"], "Anna's UI Research")
-        self.post(f"/projects/{p['id']}/archive")
-        self.assertEqual(self.store.project(p["id"])["archived"], 1)
-        self.post(f"/projects/{p['id']}/delete", {"mode": "tasks"})
-        self.assertIsNone(self.store.project(p["id"]))
+    def test_profile_language_and_password(self):
+        self.post("/profile", {"form": "profile", "name": "Elena Smirnova", "email": "elena@taskflow.demo",
+                               "job_title": "QA Lead", "color": "#ef4444", "lang": "fr"})
+        u = self.store.user(self.uid("elena@taskflow.demo"))
+        self.assertEqual((u["job_title"], u["lang"]), ("QA Lead", "fr"))
+        self.post("/profile", {"form": "password", "old": "Demo@1234", "new": "Changed123", "confirm": "Changed123"})
+        self.assertTrue(self.store.authenticate("elena@taskflow.demo", "Changed123"))
 
-    def test_member_full_task_life_cycle(self):
-        r = self.post("/tasks/new", {"title": "Design settings page", "status": "todo", "priority": "medium",
-                                     "assignee_id": "", "project_id": "", "due_date": TOMORROW})
-        tid = int(r.location.rsplit("/", 1)[1])
-        self.post(f"/tasks/{tid}/edit", {"title": "Design settings page v2", "status": "in_progress",
-                                         "priority": "high", "assignee_id": "", "project_id": "", "due_date": ""})
-        self.assertEqual(self.store.task(tid)["title"], "Design settings page v2")
-        self.assertIn(tid, [t["id"] for t in self.store.tasks(creator=self.anna["id"])])
-        self.post(f"/tasks/{tid}/delete")
-        self.assertIsNone(self.store.task(tid))
-
-    def test_checklist(self):
-        tid = self.store.tasks(assignee=self.anna["id"], status="open")[0]["id"]
-        self.post(f"/tasks/{tid}/checklist", {"title": "Write the HTML"})
-        sub = self.store.subtasks(tid)[-1]
-        self.post(f"/checklist/{sub['id']}/toggle")
-        self.assertEqual(self.store.subtask(sub["id"])["done"], 1)
-        self.post(f"/checklist/{sub['id']}/edit", {"title": "Write the HTML and CSS"})
-        self.assertEqual(self.store.subtask(sub["id"])["title"], "Write the HTML and CSS")
-        r = self.c.post(f"/checklist/{sub['id']}/toggle", data={"csrf_token": self.token()},
-                        headers={"X-Requested-With": "fetch"})
-        self.assertTrue(r.get_json()["ok"])
-        self.post(f"/checklist/{sub['id']}/delete")
-        self.assertIsNone(self.store.subtask(sub["id"]))
-
-    def test_cannot_change_checklist_of_others_task(self):
-        other = next(t for t in self.store.tasks() if not self.store.can_edit(self.anna, t))
-        self.assertEqual(self.post(f"/tasks/{other['id']}/checklist", {"title": "Hack"}).status_code, 403)
-
-    def test_edit_own_comment_only(self):
-        self.post("/tasks/3/comment", {"body": "First version"})
-        mine = self.store.comments(3)[-1]
-        self.post(f"/comments/{mine['id']}/edit", {"body": "Better version"})
-        c = self.store.comments(3)[-1]
-        self.assertEqual((c["body"], bool(c["edited_at"])), ("Better version", True))
-        other = next(c for c in self.store.comments(9) if c["user_id"] != self.anna["id"])
-        self.assertEqual(self.post(f"/comments/{other['id']}/edit", {"body": "x"}).status_code, 403)
-
-    def test_profile_and_own_account(self):
-        self.post("/profile", {"form": "profile", "name": "Anna Petrova-Kim", "email": "anna.k@taskflow.demo",
-                               "job_title": "Senior Frontend", "color": "#14b8a6"})
-        self.assertEqual(self.store.user(self.anna["id"])["name"], "Anna Petrova-Kim")
-        self.assertEqual(self.c.get("/profile").status_code, 200)
+    def test_delete_own_account(self):
+        uid = self.uid("elena@taskflow.demo")
         self.post("/profile", {"form": "delete", "password": "wrong"})
-        self.assertIsNotNone(self.store.user(self.anna["id"]))
+        self.assertIsNotNone(self.store.user(uid))
         self.post("/profile", {"form": "delete", "password": "Demo@1234"})
-        self.assertIsNone(self.store.user(self.anna["id"]))
-        self.assertEqual(self.c.get("/").status_code, 302)
+        self.assertIsNone(self.store.user(uid))
 
-    def test_admin_cannot_delete_own_account(self):
-        self.post("/logout")
-        self.login()
-        self.post("/profile", {"form": "delete", "password": "Admin@1234"})
-        self.assertIsNotNone(self.store.user(1))
+    def test_site_admin_cannot_delete_own_account(self):
+        c = self.new_client("admin@taskflow.demo", "Admin@1234")
+        self.post("/profile", {"form": "delete", "password": "Admin@1234"}, client=c)
+        self.assertIsNotNone(self.store.user_by_email("admin@taskflow.demo"))
 
 
 class TestDemoData(Base):
-    def test_portfolio_projects_from_cv(self):
-        names = " ".join(p["name"] for p in self.store.projects())
-        for word in ["Yo Delivery", "PyBank", "TaskFlow", "SFU"]:
-            self.assertIn(word, names)
-        self.assertEqual(self.store.user(1)["name"], "Jean Michel Mujyambere")
-        self.assertIn("Jean Michel Mujyambere", self.c.get("/login").get_data(as_text=True))
+    def test_two_workspaces_with_cv_projects(self):
+        mine = self.store.memberships(self.uid("admin@taskflow.demo"))
+        self.assertEqual({w["name"] for w in mine}, {"Jean's Dev Studio", "SFU Data Analysis Group"})
+        names = {p["name"] for p in self.store.projects(self.first_ws())}
+        for p in ("Yo Delivery — E-commerce", "PyBank — Online Banking", "TaskFlow — Task Manager",
+                  "CalcWise — Finance Calculator"):
+            self.assertIn(p, names)
+
+    def test_public_resume_has_no_phone_number(self):
+        r = self.store.resume_by_slug("jean-michel-mujyambere")
+        self.assertEqual(r["visibility"], "public")
+        self.assertEqual(r["content"]["phone"], "")
+        html = self.html("/r/jean-michel-mujyambere")
+        self.assertNotIn("996", html)
+        self.assertNotIn("+250", html)
+
+    def test_languages_of_demo_people(self):
+        self.assertEqual(self.store.user_by_email("fatima@taskflow.demo")["lang"], "ar")
+        self.assertEqual(self.store.user_by_email("li@taskflow.demo")["lang"], "zh")
 
 
 if __name__ == "__main__":

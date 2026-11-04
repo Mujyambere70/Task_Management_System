@@ -6,3 +6,5 @@ console_version/*.txt
 *.db
 *.db.old-backup
 .DS_Store
+.env
+tools/strings_en.json

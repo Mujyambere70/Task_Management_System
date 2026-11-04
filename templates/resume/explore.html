@@ -1,0 +1,30 @@
+{% extends "public_base.html" %}
+{% block title %}Explore resumes · TaskFlow{% endblock %}
+{% block content %}
+<section class="explore-hero">
+  <h1>Explore resumes</h1>
+  <p class="lead">People who use TaskFlow can design a resume and publish it here. Find developers, analysts, designers and more.</p>
+  <form class="explore-search" method="get">
+    <svg class="i"><use href="#i-search"/></svg>
+    <input type="search" name="q" value="{{ q }}" placeholder="Search by name, skill, city…" autofocus>
+    <button class="btn btn-primary">Search</button>
+  </form>
+  {% if user %}<a class="btn btn-light sm" href="{{ url_for('resume_list') }}"><svg class="i"><use href="#i-plus"/></svg> Add my resume</a>
+  {% else %}<p class="muted small">Want to be here too? <a href="{{ url_for('register') }}">Create a free account</a> and make your resume.</p>{% endif %}
+</section>
+<div class="cv-cards">
+  {% for x in cards %}
+  <a class="card cv-card" href="{{ url_for('resume_public', slug=x.r.slug) }}" style="--accent: {{ x.r.accent }}">
+    <div class="cv-card-top">
+      {% if x.photo %}<img src="{{ x.photo }}" alt="" loading="lazy">{% else %}<span class="cv-initials">{{ x.c.name|initials }}</span>{% endif %}
+      <div><b translate="no">{{ x.c.name }}</b><small translate="no">{{ x.c.headline }}</small></div>
+    </div>
+    {% if x.c.location %}<p class="muted small" translate="no"><svg class="i"><use href="#i-pin"/></svg> {{ x.c.location }}</p>{% endif %}
+    {% if x.skills %}<div class="cv-chips small" translate="no">{% for s in x.skills %}<span>{{ s }}</span>{% endfor %}</div>{% endif %}
+    <div class="cv-card-foot muted small"><span><svg class="i"><use href="#i-eye"/></svg> {{ x.r.views }}</span><span>{{ fmt_date(x.r.updated_at) }}</span></div>
+  </a>
+  {% else %}
+  <div class="card empty"><b>{{ 'No resumes found.' if q else 'No public resumes yet.' }}</b>{% if q %}<br><a href="{{ url_for('explore') }}">Show all</a>{% endif %}</div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,38 +1,56 @@
 """
-TaskFlow - team task management web app (Flask + SQLite).
+TaskFlow - team task management web app (Flask).
 
 Run:   pip install -r requirements.txt
        python app.py            -> http://127.0.0.1:5000
 Demo:  admin@taskflow.demo / Admin@1234   (more users in README)
+
+Database: SQLite file taskflow.db on your computer, or PostgreSQL when DATABASE_URL is set (online).
 """
 
 import calendar
 import csv
+import gzip
 import io
+import json
 import os
 import secrets
+import time
 from datetime import date, datetime, timedelta
 from functools import wraps
+from urllib.parse import urlparse
 
-from flask import (Flask, Response, abort, flash, g, jsonify, redirect, render_template, request,
+from jinja2 import pass_context
+from flask import (Flask, Response, abort, flash, g, jsonify, redirect, render_template, request, send_file,
                    session, url_for)
 
-from store import (COLORS, PRIORITIES, PRIORITY_NAMES, STATUS_NAMES, STATUSES, Store, TaskError)
+import i18n
+import otp
+import world
+from core import TaskError, fmt_minutes, parse_duration
+from store import COLORS, PRIORITIES, PRIORITY_NAMES, STATUS_NAMES, STATUSES, LIVE_SIGNAL, Store
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+DEVELOPER = {"name": "Jean Michel Mujyambere", "github": "https://github.com/Mujyambere70"}
 
 
-def create_app(db_path=None, seed=True, testing=False):
+def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=None, env=None):
+    env = os.environ if env is None else env
     app = Flask(__name__)
+    target = db_path or env.get("DATABASE_URL") or os.path.join(BASE, "taskflow.db")
+    store = Store(target, driver=driver, notifier=notifier, env=env)
+    app.store = store
     app.config.update(
-        SECRET_KEY=os.environ.get("TASKFLOW_SECRET") or secrets.token_hex(32),
+        SECRET_KEY=env.get("SECRET_KEY") or env.get("TASKFLOW_SECRET") or store.secret_key(),
         TESTING=testing,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=env.get("SECURE_COOKIES") == "1",
         PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
+        MAX_CONTENT_LENGTH=6 * 1024 * 1024,
+        JOBS=not testing and env.get("RUN_JOBS", "1") != "0",
+        APP_URL=env.get("APP_URL", "").rstrip("/"),
     )
-    store = Store(db_path or os.path.join(BASE, "taskflow.db"))
-    app.store = store
     if seed and store.count_users() == 0:
         from demo_data import load_demo
         load_demo(store)
@@ -42,11 +60,12 @@ def create_app(db_path=None, seed=True, testing=False):
         @wraps(view)
         def wrapper(*a, **kw):
             if not g.user:
-                return redirect(url_for("login", next=request.path))
+                return redirect(url_for("login", next=request.full_path if request.query_string else request.path))
             return view(*a, **kw)
         return wrapper
 
     def admin_required(view):
+        """Admin of the current workspace."""
         @wraps(view)
         @login_required
         def wrapper(*a, **kw):
@@ -55,8 +74,20 @@ def create_app(db_path=None, seed=True, testing=False):
             return view(*a, **kw)
         return wrapper
 
+    def site_admin_required(view):
+        """The administrator of the whole TaskFlow site (the first account)."""
+        @wraps(view)
+        @login_required
+        def wrapper(*a, **kw):
+            if not g.user["site_admin"]:
+                abort(403)
+            return view(*a, **kw)
+        return wrapper
+
+    app.login_required = login_required
+
     def get_task_or_404(task_id):
-        t = store.task(task_id)
+        t = store.task(task_id, ws=g.ws)
         if not t:
             abort(404)
         return t
@@ -64,27 +95,72 @@ def create_app(db_path=None, seed=True, testing=False):
     def safe_next(target):
         return target if target and target.startswith("/") and not target.startswith("//") else url_for("dashboard")
 
+    def base_url():
+        return env.get("APP_URL", "").rstrip("/") + "/" if env.get("APP_URL") else request.host_url
+
+    def start_session(u, remember=False):
+        session.clear()
+        session["uid"] = u["id"]
+        session["csrf"] = secrets.token_hex(16)
+        session["lang"] = u.get("lang") or "en"
+        session.permanent = bool(remember)
+
+    # ------------------------------------------------------------ every request
     @app.before_request
     def load_user_and_check_csrf():
-        g.user = store.user(session["uid"]) if "uid" in session else None
-        if g.user and not g.user["active"]:
+        g.user, g.ws, g.workspace = None, None, None
+        u = store.user(session["uid"]) if "uid" in session else None
+        if u and not u["active"]:
             session.clear()
-            g.user = None
+            u = None
+        lang = session.get("lang") or (u["lang"] if u else None) or world.best_language(
+            [x for x, _ in request.accept_languages])
+        world.set_lang(lang)
+        g.lang = world.current_lang()
+        if u:
+            ws = store.choose_workspace(u["id"], session.get("ws"))
+            session["ws"] = ws
+            g.ws = ws
+            g.workspace = store.workspace(ws)
+            g.user = dict(u, site_admin=u["role"] == "admin", role=store.member_role(ws, u["id"]) or "member")
         if "csrf" not in session:
             session["csrf"] = secrets.token_hex(16)
-        if request.method == "POST":
+        if request.method == "POST" and request.endpoint not in ("cron_run",):
             token = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token")
             if not token or not secrets.compare_digest(token, session["csrf"]):
                 abort(400, "Your session expired. Please reload the page and try again.")
+        if app.config["JOBS"] and request.endpoint not in ("static", "live_socket"):
+            try:
+                store.housekeeping()
+            except Exception:                                  # reminders must never break a page
+                pass
+
+    @app.after_request
+    def translate_page(resp):
+        lang = world.current_lang()
+        if lang != "en" and resp.mimetype == "text/html" and not resp.direct_passthrough:
+            page = i18n.translate_html(resp.get_data(as_text=True), lang)
+            attrs = f'lang="{lang}" dir="rtl"' if lang in world.RTL_LANGUAGES else f'lang="{lang}"'
+            resp.set_data(page.replace('<html lang="en">', f"<html {attrs}>", 1))
+        resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+        resp.headers.setdefault("Referrer-Policy", "same-origin")
+        return resp
+
+    def tr(text):
+        return i18n.translate_text(text)
 
     @app.context_processor
     def globals_for_templates():
-        return dict(user=g.get("user"), csrf_token=session.get("csrf", ""), STATUSES=STATUSES, PRIORITIES=PRIORITIES,
-                    STATUS_NAMES=STATUS_NAMES, PRIORITY_NAMES=PRIORITY_NAMES, COLORS=COLORS,
-                    today=date.today(), now_hour=datetime.now().hour, can_edit=lambda t: g.user and store.can_edit(g.user, t),
-                    can_delete=lambda t: g.user and store.can_delete(g.user, t),
-                    can_manage=lambda p: g.user and store.can_manage_project(g.user, p),
-                    nav_projects=store.projects() if g.get("user") else [], settings=store.settings())
+        u = g.get("user")
+        return dict(
+            user=u, csrf_token=session.get("csrf", ""), STATUSES=STATUSES, PRIORITIES=PRIORITIES,
+            STATUS_NAMES=STATUS_NAMES, PRIORITY_NAMES=PRIORITY_NAMES, COLORS=COLORS, today=date.today(),
+            now_hour=datetime.now().hour, can_edit=lambda t: u and store.can_edit(u, t),
+            can_delete=lambda t: u and store.can_delete(u, t), can_manage=lambda p: u and store.can_manage_project(u, p),
+            nav_projects=store.projects(g.ws) if u else [], settings=store.settings(), workspace=g.get("workspace"),
+            my_workspaces=store.memberships(u["id"]) if u else [], unseen=store.unseen_count(u["id"]) if u else 0,
+            timer=store.running_timer(u["id"]) if u else None, LANGUAGES=world.LANGUAGES, lang=g.get("lang", "en"),
+            DEVELOPER=DEVELOPER, fmt_date=world.fmt_date, server_now=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     @app.template_filter("initials")
     def initials(name):
@@ -98,12 +174,12 @@ def create_app(db_path=None, seed=True, testing=False):
         d = date.fromisoformat(value)
         diff = (d - date.today()).days
         if diff == 0:
-            return "Today"
+            return tr("Today")
         if diff == 1:
-            return "Tomorrow"
+            return tr("Tomorrow")
         if diff == -1:
-            return "Yesterday"
-        return d.strftime("%b %d") if d.year == date.today().year else d.strftime("%b %d, %Y")
+            return tr("Yesterday")
+        return world.fmt_date(d, "d MMM" if d.year == date.today().year else "d MMM y")
 
     @app.template_filter("due_class")
     def due_class(task):
@@ -116,25 +192,66 @@ def create_app(db_path=None, seed=True, testing=False):
     def time_ago(ts):
         if not ts:
             return ""
-        delta = datetime.now() - datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-        s = int(delta.total_seconds())
+        s = int((datetime.now() - datetime.strptime(ts[:19], "%Y-%m-%d %H:%M:%S")).total_seconds())
         if s < 60:
-            return "just now"
+            return tr("just now")
         if s < 3600:
-            return f"{s // 60} min ago"
+            return tr("{0} min ago").replace("{0}", str(s // 60))
         if s < 86400:
-            return f"{s // 3600} h ago"
+            return tr("{0} h ago").replace("{0}", str(s // 3600))
         if s < 7 * 86400:
-            return f"{s // 86400} d ago"
-        return ts[:10]
+            return tr("{0} d ago").replace("{0}", str(s // 86400))
+        return world.fmt_date(ts[:10])
 
     @app.template_filter("nice_date")
     def nice_date(value):
-        if not value:
-            return "—"
-        return datetime.fromisoformat(value).strftime("%d %b %Y")
+        return world.fmt_date(value) if value else "—"
+
+    # pass_context: Jinja must not compute these once when the template is compiled ("constant folding"),
+    # because the result depends on the language of each visitor
+    @pass_context
+    def tr_filter(ctx, text):
+        return i18n.translate_text(text)
+
+    @pass_context
+    def hours_filter(ctx, minutes):
+        return fmt_minutes(minutes)
+
+    @pass_context
+    def when_filter(ctx, value):
+        return world.fmt_datetime(value)
+
+    app.jinja_env.filters["tr"] = tr_filter
+    app.jinja_env.filters["hours"] = hours_filter
+    app.jinja_env.filters["when"] = when_filter
+
+    # ------------------------------------------------------------ language
+    @app.route("/lang/<code>")
+    def set_language(code):
+        if code in world.LANGUAGES:
+            session["lang"] = code
+            if g.user:
+                store.set_language(g.user["id"], code)
+        nxt = request.args.get("next")
+        if not nxt and request.referrer:
+            ref = urlparse(request.referrer)
+            if ref.netloc == request.host:
+                nxt = ref.path + ("?" + ref.query if ref.query else "")
+        return redirect(safe_next(nxt))
 
     # ------------------------------------------------------------ auth
+    def finish_login(u, remember):
+        if u["totp_enabled"]:
+            session.clear()
+            session["pending_2fa"] = u["id"]
+            session["pending_remember"] = bool(remember)
+            session["pending_next"] = request.args.get("next", "")
+            session["csrf"] = secrets.token_hex(16)
+            return redirect(url_for("login_verify"))
+        start_session(u, remember)
+        flash(tr("Welcome back, {0}!").replace("{0}", u["name"].split()[0]), "success")
+        return redirect(safe_next(request.args.get("next")))
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         if g.user:
@@ -148,19 +265,38 @@ def create_app(db_path=None, seed=True, testing=False):
             if not u:
                 flash("Wrong email or password.", "error")
                 return render_template("auth/login.html", email=request.form.get("email", "")), 401
-            session.clear()
-            session["uid"] = u["id"]
-            session["csrf"] = secrets.token_hex(16)
-            session.permanent = bool(request.form.get("remember"))
-            flash(f"Welcome back, {u['name'].split()[0]}!", "success")
-            return redirect(safe_next(request.args.get("next")))
+            return finish_login(u, request.form.get("remember"))
         return render_template("auth/login.html", email="")
+
+    @app.route("/login/verify", methods=["GET", "POST"])
+    def login_verify():
+        uid = session.get("pending_2fa")
+        if not uid:
+            return redirect(url_for("login"))
+        if request.method == "POST":
+            tries = session.get("pending_tries", 0) + 1
+            session["pending_tries"] = tries
+            try:
+                store.verify_2fa(uid, request.form.get("code", ""))
+            except TaskError as e:
+                if tries >= 5:
+                    session.clear()
+                    flash("Too many wrong codes. Please sign in again.", "error")
+                    return redirect(url_for("login"))
+                flash(str(e), "error")
+                return render_template("auth/verify.html"), 401
+            remember, nxt = session.get("pending_remember"), session.get("pending_next")
+            start_session(store.user(uid), remember)
+            return redirect(safe_next(nxt))
+        return render_template("auth/verify.html")
 
     @app.route("/register", methods=["GET", "POST"])
     def register():
         if g.user:
             return redirect(url_for("dashboard"))
-        if store.settings()["allow_registration"] != "1" and store.count_users() > 0:
+        invite = request.values.get("invite", "")
+        joining = store.workspace_by_invite(invite) if invite else None
+        if store.settings()["allow_registration"] != "1" and store.count_users() > 0 and not joining:
             flash("New sign-ups are turned off. Please ask your admin to add you.", "error")
             return redirect(url_for("login"))
         if request.method == "POST":
@@ -168,82 +304,242 @@ def create_app(db_path=None, seed=True, testing=False):
             try:
                 if f.get("password") != f.get("confirm"):
                     raise TaskError("Passwords do not match.")
-                uid = store.create_user(f.get("name"), f.get("email"), f.get("password"),
-                                        job_title=f.get("job_title", ""))
+                uid, ws = store.register(f.get("name"), f.get("email"), f.get("password"), f.get("job_title", ""),
+                                         g.lang, invite)
             except TaskError as e:
                 flash(str(e), "error")
-                return render_template("auth/register.html", form=f), 400
-            session.clear()
-            session["uid"] = uid
-            session["csrf"] = secrets.token_hex(16)
+                return render_template("auth/register.html", form=f, joining=joining, invite=invite), 400
+            start_session(store.user(uid))
+            session["ws"] = ws
             flash("Your account is ready. Welcome to TaskFlow!", "success")
             return redirect(url_for("dashboard"))
-        return render_template("auth/register.html", form={})
+        return render_template("auth/register.html", form={}, joining=joining, invite=invite)
 
     @app.route("/logout", methods=["POST"])
     def logout():
+        lang = session.get("lang")
         session.clear()
+        session["lang"] = lang
         flash("You have been signed out.", "success")
         return redirect(url_for("login"))
+
+    @app.route("/forgot", methods=["GET", "POST"])
+    def forgot():
+        if request.method == "POST":
+            sent = store.start_password_reset(request.form.get("email"), base_url())
+            if not sent and not store.notifier.email_provider():
+                flash("Note: this demo site has no email service switched on yet, so no email can be sent. "
+                      "Ask your workspace admin to set a new password for you.", "info")
+            else:
+                flash("If this email belongs to an account, we sent a link to choose a new password. "
+                      "It works for 30 minutes.", "success")
+            return redirect(url_for("login"))
+        return render_template("auth/forgot.html")
+
+    @app.route("/reset/<token>", methods=["GET", "POST"])
+    def reset(token):
+        if request.method == "POST":
+            try:
+                store.reset_password(token, request.form.get("new"), request.form.get("confirm"))
+                flash("Your new password is saved. Please sign in.", "success")
+                return redirect(url_for("login"))
+            except TaskError as e:
+                flash(str(e), "error")
+        return render_template("auth/reset.html", ok=store.reset_token_ok(token), token=token)
+
+    # ------------------------------------------------------------ workspaces
+    @app.route("/workspaces", methods=["GET", "POST"])
+    @login_required
+    def workspaces():
+        if request.method == "POST":
+            try:
+                ws = store.create_workspace(g.user["id"], request.form.get("name"), request.form.get("description"),
+                                            request.form.get("color"))
+                session["ws"] = ws
+                flash("Workspace created. Invite your team from the Team page.", "success")
+                return redirect(url_for("dashboard"))
+            except TaskError as e:
+                flash(str(e), "error")
+        return render_template("workspaces.html", mine=store.memberships(g.user["id"]))
+
+    @app.route("/workspaces/<int:ws>/open", methods=["POST"])
+    @login_required
+    def workspace_switch(ws):
+        if not store.member_role(ws, g.user["id"]):
+            abort(403)
+        session["ws"] = ws
+        store.remember_workspace(g.user["id"], ws)
+        return redirect(url_for("dashboard"))
+
+    @app.route("/workspace/settings", methods=["GET", "POST"])
+    @admin_required
+    def workspace_settings():
+        if request.method == "POST":
+            f = request.form
+            try:
+                if f.get("action") == "invite":
+                    store.new_invite_code(g.user["id"], g.ws)
+                    flash("A new invite link was made. The old link does not work any more.", "success")
+                elif f.get("action") == "delete":
+                    store.delete_workspace(g.user["id"], g.ws, f.get("confirm"))
+                    session.pop("ws", None)
+                    flash("Workspace deleted.", "success")
+                    return redirect(url_for("workspaces"))
+                elif f.get("action") == "clean_tasks":
+                    days = int(f["days"]) if f.get("days", "").isdigit() else 30
+                    n = store.delete_completed_tasks(g.user["id"], g.ws, days)
+                    flash(tr("{0} completed tasks removed.").replace("{0}", str(n)), "success")
+                else:
+                    store.save_workspace(g.user["id"], g.ws, f.get("name"), f.get("description"), f.get("color"),
+                                         f.get("default_priority"))
+                    flash("Settings saved.", "success")
+            except TaskError as e:
+                flash(str(e), "error")
+            return redirect(url_for("workspace_settings"))
+        invite_link = base_url() + "join/" + g.workspace["invite_code"]
+        return render_template("workspace_settings.html", invite_link=invite_link)
+
+    @app.route("/join/<code>", methods=["GET", "POST"])
+    def join(code):
+        ws = store.workspace_by_invite(code)
+        if not ws:
+            flash("This invite link is not valid any more. Ask for a new one.", "error")
+            return redirect(url_for("login"))
+        if not g.user:
+            return render_template("auth/join.html", ws=ws, code=code)
+        if store.member_role(ws["id"], g.user["id"]):
+            session["ws"] = ws["id"]
+            return redirect(url_for("dashboard"))
+        if request.method == "POST":
+            store.add_member(ws["id"], g.user["id"], "member")
+            session["ws"] = ws["id"]
+            store.remember_workspace(g.user["id"], ws["id"])
+            flash(tr("You joined “{0}”.").replace("{0}", ws["name"]), "success")
+            return redirect(url_for("dashboard"))
+        return render_template("auth/join.html", ws=ws, code=code)
+
+    @app.route("/workspace/leave", methods=["POST"])
+    @login_required
+    def workspace_leave():
+        try:
+            if len(store.memberships(g.user["id"])) <= 1:
+                raise TaskError("This is your only workspace. Create another one first.")
+            store.remove_member(g.user["id"], g.ws, g.user["id"])
+            session.pop("ws", None)
+            flash("You left the workspace.", "success")
+        except TaskError as e:
+            flash(str(e), "error")
+        return redirect(url_for("dashboard"))
 
     # ------------------------------------------------------------ dashboard
     @app.route("/")
     @login_required
     def dashboard():
         uid = g.user["id"]
-        mine = [t for t in store.tasks(assignee=uid, status="open")]
+        mine = store.tasks(g.ws, assignee=uid, status="open")
         return render_template(
             "dashboard.html",
-            my=store.stats(uid), team=store.stats(),
+            my=store.stats(g.ws, uid), team=store.stats(g.ws),
             overdue=[t for t in mine if t["due_date"] and t["due_date"] < date.today().isoformat()],
             upcoming=[t for t in mine if not t["due_date"] or t["due_date"] >= date.today().isoformat()][:7],
-            activity=store.activity(12), chart=store.completed_per_day(14), projects=store.projects())
+            activity=store.activity(g.ws, 12), chart=store.completed_per_day(g.ws, 14), projects=store.projects(g.ws))
 
     # ------------------------------------------------------------ board
     @app.route("/board")
     @login_required
     def board():
         a = request.args
-        tasks = store.tasks(q=a.get("q", ""), assignee=a.get("assignee", ""), project=a.get("project", ""),
+        tasks = store.tasks(g.ws, q=a.get("q", ""), assignee=a.get("assignee", ""), project=a.get("project", ""),
                             priority=a.get("priority", ""), sort="priority")
         columns = {key: [t for t in tasks if t["status"] == key] for key, _ in STATUSES}
-        return render_template("board.html", columns=columns, users=store.users(active_only=True),
-                               projects=store.projects(), args=a)
+        return render_template("board.html", columns=columns, users=store.users(g.ws, active_only=True),
+                               projects=store.projects(g.ws), args=a)
 
     @app.route("/api/tasks/<int:task_id>/status", methods=["POST"])
     @login_required
     def api_status(task_id):
         t = get_task_or_404(task_id)
         if not store.can_edit(g.user, t):
-            return jsonify(ok=False, error="You can only move tasks you created or that are assigned to you."), 403
+            return jsonify(ok=False, error=tr("You can only move tasks you created or that are assigned to you.")), 403
         data = request.get_json(silent=True) or {}
         try:
-            store.set_status(g.user["id"], task_id, data.get("status"))
+            store.set_status(g.user["id"], g.ws, task_id, data.get("status"))
         except TaskError as e:
-            return jsonify(ok=False, error=str(e)), 400
-        return jsonify(ok=True, status=data.get("status"), label=STATUS_NAMES[data.get("status")])
+            return jsonify(ok=False, error=tr(str(e))), 400
+        return jsonify(ok=True, status=data.get("status"), label=tr(STATUS_NAMES[data.get("status")]))
+
+    # ------------------------------------------------------------ live updates (WebSocket + polling fallback)
+    @app.route("/api/events")
+    @login_required
+    def api_events():
+        after = request.args.get("after", type=int)
+        if after is None:
+            return jsonify(last=store.latest_event_id(), events=[])
+        events = store.events_after(g.ws, g.user["id"], after)
+        return jsonify(last=events[-1]["id"] if events else after,
+                       events=[{"id": e["id"], "kind": e["kind"], "task": e["task_id"], "by": e["user_id"],
+                                "text": tr(e["text"]), "me": e["user_id"] == g.user["id"]} for e in events],
+                       unseen=store.unseen_count(g.user["id"]))
+
+    try:
+        from flask_sock import Sock
+        sock = Sock(app)
+
+        @sock.route("/ws")
+        def live_socket(ws_conn):
+            """Sends every change of the workspace to the open page at once. Works across several servers,
+            because the changes are read from the events table."""
+            if not g.user:
+                ws_conn.close()
+                return
+            last = store.latest_event_id()
+            lang, user_id, workspace = g.lang, g.user["id"], g.ws
+            ws_conn.send(json.dumps({"hello": True, "last": last}))
+            idle = 0
+            while ws_conn.connected:
+                with LIVE_SIGNAL:
+                    LIVE_SIGNAL.wait(timeout=2)
+                events = store.events_after(workspace, user_id, last)
+                for e in events:
+                    last = e["id"]
+                    ws_conn.send(json.dumps({"id": e["id"], "kind": e["kind"], "task": e["task_id"], "by": e["user_id"],
+                                             "text": i18n.translate_text(e["text"], lang), "me": e["user_id"] == user_id,
+                                             "unseen": store.unseen_count(user_id) if e["kind"] == "notification" else None}))
+                idle = 0 if events else idle + 1
+                if idle >= 12:                         # every ~25 s: keep the connection alive through proxies
+                    ws_conn.send('{"ping":1}')
+                    idle = 0
+        app.config["WEBSOCKETS"] = True
+    except ImportError:                                 # flask-sock not installed: pages fall back to polling
+        app.config["WEBSOCKETS"] = False
 
     # ------------------------------------------------------------ task list
     @app.route("/tasks")
     @login_required
     def task_list():
         a = request.args
-        tasks = store.tasks(q=a.get("q", "").strip(), status=a.get("status", ""), priority=a.get("priority", ""),
+        tasks = store.tasks(g.ws, q=a.get("q", "").strip(), status=a.get("status", ""), priority=a.get("priority", ""),
                             assignee=a.get("assignee", ""), project=a.get("project", ""), due=a.get("due", ""),
                             sort=a.get("sort", "due"), creator=a.get("creator", ""))
-        return render_template("tasks.html", tasks=tasks, users=store.users(), projects=store.projects(), args=a)
+        return render_template("tasks.html", tasks=tasks, users=store.users(g.ws), projects=store.projects(g.ws), args=a)
 
     @app.route("/my-tasks")
     @login_required
     def my_tasks():
         return redirect(url_for("task_list", assignee=g.user["id"], status="open"))
 
+    def form_from_task(t):
+        form = {k: ("" if t[k] is None else str(t[k])) for k in
+                ("title", "description", "status", "priority", "assignee_id", "project_id", "due_date")}
+        form["estimate"] = fmt_minutes(t["estimate_minutes"]) if t["estimate_minutes"] else ""
+        return form
+
     @app.route("/tasks/new", methods=["GET", "POST"])
     @login_required
     def task_new():
         if request.method == "POST":
             try:
-                tid = store.create_task(g.user["id"], request.form)
+                tid = store.create_task(g.user["id"], g.ws, request.form)
                 flash("Task created.", "success")
                 return redirect(url_for("task_detail", task_id=tid))
             except TaskError as e:
@@ -251,16 +547,25 @@ def create_app(db_path=None, seed=True, testing=False):
                 form = request.form
         else:
             form = {"status": request.args.get("status", "todo"), "project_id": request.args.get("project", ""),
-                    "assignee_id": str(g.user["id"]), "priority": store.settings()["default_priority"]}
+                    "assignee_id": str(g.user["id"]), "priority": g.workspace["default_priority"]}
         return render_template("task_form.html", form=form, task=None,
-                               users=store.users(active_only=True), projects=store.projects())
+                               users=store.users(g.ws, active_only=True), projects=store.projects(g.ws))
 
     @app.route("/tasks/<int:task_id>")
     @login_required
     def task_detail(task_id):
-        t = get_task_or_404(task_id)
+        t = store.task(task_id, ws=g.ws)
+        if not t:                                   # a link to a task of another of my workspaces: switch to it
+            other = store.task(task_id)
+            if other and store.member_role(other["workspace_id"], g.user["id"]):
+                session["ws"] = other["workspace_id"]
+                store.remember_workspace(g.user["id"], other["workspace_id"])
+                return redirect(request.full_path if request.query_string else request.path)
+            abort(404)
         return render_template("task_detail.html", t=t, comments=store.comments(task_id),
-                               subtasks=store.subtasks(task_id), history=store.activity(30, task_id=task_id))
+                               subtasks=store.subtasks(task_id), history=store.activity(g.ws, 30, task_id=task_id),
+                               files=store.attachments(task_id), entries=store.time_entries(task_id),
+                               members=store.users(g.ws, active_only=True))
 
     # ----- checklist inside a task (anyone who can edit the task)
     def editable_task(task_id):
@@ -269,8 +574,8 @@ def create_app(db_path=None, seed=True, testing=False):
             abort(403)
         return t
 
-    def back_to_checklist(task_id):
-        return redirect(url_for("task_detail", task_id=task_id) + "#checklist")
+    def back_to(task_id, anchor):
+        return redirect(url_for("task_detail", task_id=task_id) + "#" + anchor)
 
     @app.route("/tasks/<int:task_id>/checklist", methods=["POST"])
     @login_required
@@ -280,7 +585,7 @@ def create_app(db_path=None, seed=True, testing=False):
             store.add_subtask(g.user["id"], task_id, request.form.get("title"))
         except TaskError as e:
             flash(str(e), "error")
-        return back_to_checklist(task_id)
+        return back_to(task_id, "checklist")
 
     @app.route("/checklist/<int:sub_id>/<action>", methods=["POST"])
     @login_required
@@ -303,36 +608,31 @@ def create_app(db_path=None, seed=True, testing=False):
         if request.headers.get("X-Requested-With") == "fetch":
             t = store.task(sub["task_id"])
             return jsonify(ok=True, done=t["sub_done"], total=t["sub_total"])
-        return back_to_checklist(sub["task_id"])
+        return back_to(sub["task_id"], "checklist")
 
     @app.route("/tasks/<int:task_id>/edit", methods=["GET", "POST"])
     @login_required
     def task_edit(task_id):
-        t = get_task_or_404(task_id)
-        if not store.can_edit(g.user, t):
-            abort(403)
-        form = {k: ("" if t[k] is None else str(t[k])) for k in
-                ("title", "description", "status", "priority", "assignee_id", "project_id", "due_date")}
+        t = editable_task(task_id)
+        form = form_from_task(t)
         if request.method == "POST":
             try:
-                store.update_task(g.user["id"], task_id, request.form)
+                store.update_task(g.user["id"], g.ws, task_id, request.form)
                 flash("Task updated.", "success")
                 return redirect(url_for("task_detail", task_id=task_id))
             except TaskError as e:
                 flash(str(e), "error")
                 form = request.form
         return render_template("task_form.html", form=form, task=t,
-                               users=store.users(active_only=True), projects=store.projects())
+                               users=store.users(g.ws, active_only=True), projects=store.projects(g.ws))
 
     @app.route("/tasks/<int:task_id>/status", methods=["POST"])
     @login_required
     def task_status(task_id):
-        t = get_task_or_404(task_id)
-        if not store.can_edit(g.user, t):
-            abort(403)
+        editable_task(task_id)
         try:
-            store.set_status(g.user["id"], task_id, request.form.get("status"))
-            flash(f"Status changed to {STATUS_NAMES[request.form['status']]}.", "success")
+            store.set_status(g.user["id"], g.ws, task_id, request.form.get("status"))
+            flash(tr("Status changed to {0}.").replace("{0}", tr(STATUS_NAMES[request.form["status"]])), "success")
         except TaskError as e:
             flash(str(e), "error")
         return redirect(safe_next(request.form.get("next")) if request.form.get("next")
@@ -344,8 +644,8 @@ def create_app(db_path=None, seed=True, testing=False):
         t = get_task_or_404(task_id)
         if not store.can_delete(g.user, t):
             abort(403)
-        store.delete_task(g.user["id"], task_id)
-        flash(f"Task “{t['title']}” deleted.", "success")
+        store.delete_task(g.user["id"], g.ws, task_id)
+        flash(tr("Task “{0}” deleted.").replace("{0}", t["title"]), "success")
         return redirect(url_for("task_list"))
 
     @app.route("/tasks/<int:task_id>/comment", methods=["POST"])
@@ -353,10 +653,109 @@ def create_app(db_path=None, seed=True, testing=False):
     def task_comment(task_id):
         get_task_or_404(task_id)
         try:
-            store.add_comment(g.user["id"], task_id, request.form.get("body"))
+            store.add_comment(g.user["id"], g.ws, task_id, request.form.get("body"))
         except TaskError as e:
             flash(str(e), "error")
-        return redirect(url_for("task_detail", task_id=task_id) + "#comments")
+        return back_to(task_id, "comments")
+
+    # ----- attachments
+    @app.route("/tasks/<int:task_id>/files", methods=["POST"])
+    @login_required
+    def file_upload(task_id):
+        get_task_or_404(task_id)                       # every member of the workspace may add files
+        files = [f for f in request.files.getlist("file") if f and f.filename]
+        if not files:
+            flash("Please choose a file.", "error")
+        for f in files[:10]:
+            try:
+                store.add_attachment(g.user["id"], task_id, f.filename, f.read())
+            except TaskError as e:
+                flash(f"{f.filename}: {tr(str(e))}", "error")
+                break
+        else:
+            if files:
+                flash("File uploaded." if len(files) == 1 else tr("{0} files uploaded.").replace("{0}", str(len(files))),
+                      "success")
+        return back_to(task_id, "files")
+
+    def member_file(file_id, with_data=False):
+        a = store.attachment(file_id, with_data=with_data)
+        if not a or not store.member_role(a["workspace_id"], g.user["id"]):
+            abort(404)
+        return a
+
+    @app.route("/files/<int:file_id>")
+    @login_required
+    def file_download(file_id):
+        a = member_file(file_id, with_data=True)
+        inline = a["is_image"] or a["mime"] == "application/pdf"
+        resp = send_file(io.BytesIO(a["bytes"]), mimetype=a["mime"], as_attachment=not inline, download_name=a["name"])
+        resp.headers["Content-Security-Policy"] = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'"
+        resp.headers["Cache-Control"] = "private, max-age=3600"
+        return resp
+
+    @app.route("/files/<int:file_id>/delete", methods=["POST"])
+    @login_required
+    def file_delete(file_id):
+        a = member_file(file_id)
+        t = get_task_or_404(a["task_id"])
+        if not (store.can_edit(g.user, t) or a["user_id"] == g.user["id"]):
+            abort(403)
+        store.delete_attachment(g.user["id"], file_id)
+        flash("File removed.", "success")
+        return back_to(a["task_id"], "files")
+
+    # ----- time tracking
+    @app.route("/tasks/<int:task_id>/timer", methods=["POST"])
+    @login_required
+    def timer(task_id):
+        get_task_or_404(task_id)
+        if request.form.get("action") == "stop":
+            minutes = store.stop_timer(g.user["id"])
+            if minutes:
+                flash(tr("Timer stopped: {0} logged.").replace("{0}", fmt_minutes(minutes)), "success")
+        else:
+            stopped = store.start_timer(g.user["id"], task_id)
+            flash("Timer started." if not stopped else
+                  tr("Timer started. The previous timer was stopped ({0}).").replace("{0}", fmt_minutes(stopped)),
+                  "success")
+        return redirect(safe_next(request.form.get("next")) if request.form.get("next") else
+                        url_for("task_detail", task_id=task_id) + "#time")
+
+    @app.route("/timer/stop", methods=["POST"])
+    @login_required
+    def timer_stop():
+        minutes = store.stop_timer(g.user["id"])
+        if minutes:
+            flash(tr("Timer stopped: {0} logged.").replace("{0}", fmt_minutes(minutes)), "success")
+        return redirect(safe_next(request.form.get("next")))
+
+    @app.route("/tasks/<int:task_id>/time", methods=["POST"])
+    @login_required
+    def time_log(task_id):
+        get_task_or_404(task_id)
+        try:
+            minutes = parse_duration(request.form.get("time"))
+            if not minutes:
+                raise TaskError("Write the time like 1.5, 90m or 1h 30m.")
+            store.log_time(g.user["id"], task_id, minutes, request.form.get("day"), request.form.get("note"))
+            flash(tr("{0} logged.").replace("{0}", fmt_minutes(minutes)), "success")
+        except TaskError as e:
+            flash(str(e), "error")
+        return back_to(task_id, "time")
+
+    @app.route("/time/<int:entry_id>/delete", methods=["POST"])
+    @login_required
+    def time_delete(entry_id):
+        e = store.time_entry(entry_id)
+        if not e or e["workspace_id"] != g.ws:
+            abort(404)
+        try:
+            task_id = store.delete_time_entry(g.user, entry_id)
+        except PermissionError:
+            abort(403)
+        flash("Time entry removed.", "success")
+        return back_to(task_id, "time")
 
     # ------------------------------------------------------------ calendar
     @app.route("/calendar")
@@ -367,23 +766,24 @@ def create_app(db_path=None, seed=True, testing=False):
         except ValueError:
             month = date.today().replace(day=1)
         weeks = calendar.Calendar(firstweekday=0).monthdatescalendar(month.year, month.month)
-        tasks = store.tasks_between(weeks[0][0], weeks[-1][-1])
+        tasks = store.tasks_between(g.ws, weeks[0][0], weeks[-1][-1])
         by_day = {}
         for t in tasks:
             by_day.setdefault(t["due_date"], []).append(t)
         prev_m = (month - timedelta(days=1)).replace(day=1)
         next_m = (month + timedelta(days=32)).replace(day=1)
         return render_template("calendar.html", weeks=weeks, month=month, by_day=by_day,
+                               month_title=world.month_title(month), weekdays=world.weekday_names(),
                                prev_m=prev_m.strftime("%Y-%m"), next_m=next_m.strftime("%Y-%m"))
 
     # ------------------------------------------------------------ projects
     @app.route("/projects")
     @login_required
     def projects():
-        return render_template("projects.html", projects=store.projects(include_archived=True))
+        return render_template("projects.html", projects=store.projects(g.ws, include_archived=True))
 
     def managed_project(project_id):
-        p = store.project(project_id)
+        p = store.project(project_id, ws=g.ws)
         if not p:
             abort(404)
         if not store.can_manage_project(g.user, p):
@@ -398,7 +798,7 @@ def create_app(db_path=None, seed=True, testing=False):
         if pid:
             managed_project(pid)                      # only the owner or an admin may edit
         try:
-            store.save_project(g.user["id"], f.get("name"), f.get("description"), f.get("color"), pid)
+            store.save_project(g.user["id"], g.ws, f.get("name"), f.get("description"), f.get("color"), pid)
             flash("Project saved.", "success")
         except TaskError as e:
             flash(str(e), "error")
@@ -408,7 +808,7 @@ def create_app(db_path=None, seed=True, testing=False):
     @login_required
     def project_archive(project_id):
         managed_project(project_id)
-        store.toggle_archive(g.user["id"], project_id)
+        store.toggle_archive(g.user["id"], g.ws, project_id)
         flash("Project updated.", "success")
         return redirect(url_for("projects"))
 
@@ -417,30 +817,36 @@ def create_app(db_path=None, seed=True, testing=False):
     def project_delete(project_id):
         managed_project(project_id)
         try:
-            store.delete_project(g.user["id"], project_id, delete_tasks=request.form.get("mode") == "tasks")
+            store.delete_project(g.user["id"], g.ws, project_id, delete_tasks=request.form.get("mode") == "tasks")
             flash("Project deleted.", "success")
         except TaskError as e:
             flash(str(e), "error")
         return redirect(url_for("projects"))
 
+    def comment_in_workspace(comment_id):
+        c = store.comment(comment_id)
+        if not c or c["workspace_id"] != g.ws:
+            abort(404)
+        return c
+
     @app.route("/comments/<int:comment_id>/edit", methods=["POST"])
     @login_required
     def comment_edit(comment_id):
+        comment_in_workspace(comment_id)
         try:
             task_id = store.edit_comment(g.user, comment_id, request.form.get("body"))
             flash("Comment updated.", "success")
         except PermissionError:
             abort(403)
         except TaskError as e:
-            if "not found" in str(e):
-                abort(404)
             flash(str(e), "error")
             return redirect(request.referrer or url_for("dashboard"))
-        return redirect(url_for("task_detail", task_id=task_id) + "#comments")
+        return back_to(task_id, "comments")
 
     @app.route("/comments/<int:comment_id>/delete", methods=["POST"])
     @login_required
     def comment_delete(comment_id):
+        comment_in_workspace(comment_id)
         try:
             task_id = store.delete_comment(g.user, comment_id)
         except TaskError:
@@ -448,44 +854,64 @@ def create_app(db_path=None, seed=True, testing=False):
         except PermissionError:
             abort(403)
         flash("Comment deleted.", "success")
-        return redirect(url_for("task_detail", task_id=task_id) + "#comments")
+        return back_to(task_id, "comments")
 
     @app.route("/tasks/bulk", methods=["POST"])
     @admin_required
     def task_bulk():
         f = request.form
         try:
-            n = store.bulk_update(g.user["id"], f.getlist("ids"), f.get("action"), f.get("value"))
-            flash(f"{n} task{'s' if n != 1 else ''} updated.", "success")
+            n = store.bulk_update(g.user["id"], g.ws, f.getlist("ids"), f.get("action"), f.get("value"))
+            flash(tr("{0} tasks updated.").replace("{0}", str(n)), "success")
         except TaskError as e:
             flash(str(e), "error")
         return redirect(safe_next(f.get("next")))
 
+    # ------------------------------------------------------------ notifications
+    @app.route("/notifications", methods=["GET", "POST"])
+    @login_required
+    def notifications():
+        if request.method == "POST":
+            store.mark_seen(g.user["id"])
+            return redirect(url_for("notifications"))
+        rows = store.notifications(g.user["id"])
+        store.mark_seen(g.user["id"])
+        return render_template("notifications.html", rows=rows)
+
+    @app.route("/cron/run", methods=["GET", "POST"])
+    def cron_run():
+        """For an outside scheduler (cron-job.org, GitHub Actions): /cron/run?key=CRON_KEY sends due reminders."""
+        key = env.get("CRON_KEY", "")
+        if not key or not secrets.compare_digest(request.args.get("key", ""), key):
+            abort(404)
+        return jsonify(ok=True, **(store.housekeeping(force=True) or {}))
+
     # ------------------------------------------------------------ admin panel
     @app.route("/admin")
-    @admin_required
+    @site_admin_required
     def admin_panel():
+        tab = request.args.get("tab", "site")
+        if tab not in ("site", "data", "maintenance"):
+            tab = "site"
         table = request.args.get("table", "tasks")
         if table not in store.TABLES:
             table = "tasks"
-        cols, rows, total = store.table_rows(table, limit=200)
-        return render_template("admin.html", counts=store.table_counts(), table=table, cols=cols, rows=rows,
-                               total=total, tab=request.args.get("tab", "settings"))
+        cols, rows, total = store.table_rows(table, limit=200) if tab == "data" else ([], [], 0)
+        services = {"database": store.describe_database(), "email": store.notifier.email_provider(),
+                    "websockets": app.config["WEBSOCKETS"], "cron": bool(env.get("CRON_KEY")),
+                    "app_url": env.get("APP_URL", "")}
+        return render_template("admin.html", counts=store.table_counts(),
+                               table=table, cols=cols, rows=rows, total=total, tab=tab, services=services)
 
     @app.route("/admin/settings", methods=["POST"])
-    @admin_required
+    @site_admin_required
     def admin_settings():
-        f = request.form
-        try:
-            store.save_settings(g.user["id"], f.get("workspace_name"), f.get("allow_registration"),
-                                f.get("default_priority"))
-            flash("Settings saved.", "success")
-        except TaskError as e:
-            flash(str(e), "error")
-        return redirect(url_for("admin_panel", tab="settings"))
+        store.save_site_settings(g.user["id"], request.form.get("allow_registration"))
+        flash("Settings saved.", "success")
+        return redirect(url_for("admin_panel", tab="site"))
 
     @app.route("/admin/data/<table>.csv")
-    @admin_required
+    @site_admin_required
     def admin_table_csv(table):
         try:
             cols, rows, _ = store.table_rows(table, limit=1_000_000)
@@ -495,21 +921,39 @@ def create_app(db_path=None, seed=True, testing=False):
         w = csv.writer(buf)
         w.writerow(cols)
         w.writerows(rows)
-        return Response("\ufeff" + buf.getvalue(), mimetype="text/csv",
+        return Response("﻿" + buf.getvalue(), mimetype="text/csv",
                         headers={"Content-Disposition": f"attachment; filename=taskflow_{table}_{date.today()}.csv"})
 
+    @app.route("/admin/backup.json.gz")
+    @site_admin_required
+    def admin_backup():
+        data = {"app": "TaskFlow", "version": 2, "created_at": datetime.now().isoformat(timespec="seconds"),
+                "tables": {}}
+        with store.db() as con:
+            for t in store.TABLES:
+                cur = con.execute(f"SELECT * FROM {t}")
+                keys = [c[0] for c in cur.description]
+                data["tables"][t] = [dict(zip(keys, list(r))) for r in cur.fetchall()
+                                     if not (t == "settings" and r[0] == "secret_key")]
+        blob = gzip.compress(json.dumps(data, default=str).encode())
+        return Response(blob, mimetype="application/gzip", headers={
+            "Content-Disposition": f"attachment; filename=taskflow_backup_{date.today()}.json.gz"})
+
     @app.route("/admin/maintenance", methods=["POST"])
-    @admin_required
+    @site_admin_required
     def admin_maintenance():
         f = request.form
         action = f.get("action")
         days = int(f["days"]) if f.get("days", "").isdigit() else 0
         if action == "clear_activity":
             n = store.clear_activity(g.user["id"], days)
-            flash(f"{n} activity entries removed.", "success")
+            flash(tr("{0} activity entries removed.").replace("{0}", str(n)), "success")
         elif action == "clean_tasks":
-            n = store.delete_completed_tasks(g.user["id"], days)
-            flash(f"{n} completed tasks removed.", "success")
+            n = store.delete_completed_tasks(g.user["id"], g.ws, days)
+            flash(tr("{0} completed tasks removed.").replace("{0}", str(n)), "success")
+        elif action == "send_reminders":
+            n = store.send_reminders()
+            flash(tr("{0} reminders sent.").replace("{0}", str(n)), "success")
         elif action == "reset_demo":
             if f.get("confirm") != "RESET":
                 flash("Type RESET to confirm.", "error")
@@ -524,20 +968,22 @@ def create_app(db_path=None, seed=True, testing=False):
             abort(400)
         return redirect(url_for("admin_panel", tab="maintenance"))
 
-    # ------------------------------------------------------------ team (admin)
+    # ------------------------------------------------------------ team (members of the workspace)
     @app.route("/team")
     @login_required
     def team():
-        return render_template("team.html", people=store.user_report())
+        return render_template("team.html", people=store.user_report(g.ws), workload=store.workload(g.ws),
+                               invite_link=base_url() + "join/" + g.workspace["invite_code"])
 
     @app.route("/team/add", methods=["POST"])
     @admin_required
     def team_add():
         f = request.form
         try:
-            store.create_user(f.get("name"), f.get("email"), f.get("password"), role=f.get("role"),
-                              job_title=f.get("job_title", ""), by=g.user["id"])
-            flash(f"{f.get('name')} was added to the team.", "success")
+            _, created = store.invite_member(g.user["id"], g.ws, f.get("name"), f.get("email"), f.get("password"),
+                                             role=f.get("role"), job_title=f.get("job_title", ""))
+            flash(tr("{0} was added to the team.").replace("{0}", f.get("name") or f.get("email")) if created else
+                  "This person already had an account and was added to the workspace.", "success")
         except TaskError as e:
             flash(str(e), "error")
         return redirect(url_for("team"))
@@ -545,15 +991,24 @@ def create_app(db_path=None, seed=True, testing=False):
     @app.route("/team/<int:user_id>/<action>", methods=["POST"])
     @admin_required
     def team_action(user_id, action):
-        if not store.user(user_id):
+        if not store.member_role(g.ws, user_id):
             abort(404)
+        site_only = {"toggle", "reset", "edit", "delete", "reset2fa"}
+        if action in site_only and not g.user["site_admin"]:
+            abort(403)
         try:
             if action == "role":
-                store.admin_set_role(g.user["id"], user_id, request.form.get("role"))
+                store.set_member_role(g.user["id"], g.ws, user_id, request.form.get("role"))
+            elif action == "remove":
+                store.remove_member(g.user["id"], g.ws, user_id)
+                flash("Member removed from the workspace. Their tasks here are now unassigned.", "success")
+                return redirect(url_for("team"))
             elif action == "toggle":
                 store.admin_toggle_active(g.user["id"], user_id)
             elif action == "reset":
                 store.admin_reset_password(g.user["id"], user_id, request.form.get("password"))
+            elif action == "reset2fa":
+                store.reset_2fa(g.user["id"], user_id)
             elif action == "edit":
                 f = request.form
                 store.admin_update_user(g.user["id"], user_id, f.get("name"), f.get("email"), f.get("job_title"),
@@ -561,7 +1016,7 @@ def create_app(db_path=None, seed=True, testing=False):
             elif action == "delete":
                 name = store.user(user_id)["name"]
                 store.delete_user(g.user["id"], user_id)
-                flash(f"{name}'s account was deleted. Their tasks are now unassigned.", "success")
+                flash(tr("{0}'s account was deleted. Their tasks are now unassigned.").replace("{0}", name), "success")
                 return redirect(url_for("team"))
             else:
                 abort(404)
@@ -574,49 +1029,105 @@ def create_app(db_path=None, seed=True, testing=False):
     @app.route("/reports")
     @login_required
     def reports():
-        return render_template("reports.html", s=store.stats(), people=store.user_report(),
-                               projects=store.projects(), chart=store.completed_per_day(30),
-                               activity=store.activity(30))
+        a = request.args
+        project = a.get("project", type=int)
+        if project and not store.project(project, ws=g.ws):
+            project = None
+        metric = a.get("metric") if a.get("metric") in ("tasks", "hours") else "tasks"
+        days = a.get("days", type=int) or 14
+        bd = store.burndown(g.ws, project, days, metric)
+        return render_template("reports.html", s=store.stats(g.ws), people=store.user_report(g.ws),
+                               projects=store.projects(g.ws), chart=store.completed_per_day(g.ws, 30),
+                               activity=store.activity(g.ws, 30), bd=bd, svg=store.chart_svg_points(bd),
+                               time=store.time_report(g.ws, 30), args=a, project=project, metric=metric,
+                               days=len([p for p in bd["points"] if p["remaining"] is not None]))
 
     @app.route("/reports/tasks.csv")
     @login_required
     def export_csv():
         buf = io.StringIO()
         w = csv.writer(buf)
-        w.writerow(["ID", "Title", "Project", "Status", "Priority", "Assigned to", "Created by",
-                    "Due date", "Created", "Completed"])
-        for t in store.tasks(sort="due"):
+        w.writerow(["ID", "Title", "Project", "Status", "Priority", "Assigned to", "Created by", "Due date",
+                    "Estimate (h)", "Logged (h)", "Created", "Completed"])
+        for t in store.tasks(g.ws, sort="due"):
             w.writerow([t["id"], t["title"], t["project_name"] or "", STATUS_NAMES[t["status"]],
                         PRIORITY_NAMES[t["priority"]], t["assignee_name"] or "Unassigned", t["creator_name"],
-                        t["due_date"] or "", t["created_at"], t["completed_at"] or ""])
+                        t["due_date"] or "", round((t["estimate_minutes"] or 0) / 60, 2) or "",
+                        round(t["logged_minutes"] / 60, 2) or "", t["created_at"], t["completed_at"] or ""])
         return Response("﻿" + buf.getvalue(), mimetype="text/csv",
                         headers={"Content-Disposition": f"attachment; filename=taskflow_tasks_{date.today()}.csv"})
+
+    @app.route("/reports/time.csv")
+    @login_required
+    def export_time_csv():
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(["Start", "End", "Minutes", "Hours", "Person", "Task", "Project", "Note"])
+        for e in store.time_entries_csv(g.ws):
+            w.writerow([e["started_at"], e["ended_at"], e["minutes"], round(e["minutes"] / 60, 2), e["person"],
+                        e["task"], e["project"], e["note"]])
+        return Response("﻿" + buf.getvalue(), mimetype="text/csv",
+                        headers={"Content-Disposition": f"attachment; filename=taskflow_time_{date.today()}.csv"})
 
     # ------------------------------------------------------------ profile
     @app.route("/profile", methods=["GET", "POST"])
     @login_required
     def profile():
+        uid = g.user["id"]
         if request.method == "POST":
             f = request.form
             try:
-                if f.get("form") == "password":
-                    store.change_password(g.user["id"], f.get("old"), f.get("new"), f.get("confirm"))
+                form = f.get("form")
+                if form == "password":
+                    store.change_password(uid, f.get("old"), f.get("new"), f.get("confirm"))
                     flash("Password changed.", "success")
-                elif f.get("form") == "delete":
-                    store.delete_own_account(g.user["id"], f.get("password"))
+                elif form == "delete":
+                    store.delete_own_account(uid, f.get("password"))
                     session.clear()
                     flash("Your account was deleted. Goodbye!", "success")
                     return redirect(url_for("login"))
+                elif form == "notify":
+                    store.save_notify_settings(uid, f.get("email"), f.get("remind_days"))
+                    flash("Notification settings saved.", "success")
+                elif form == "2fa_on":
+                    secret = session.get("totp_setup")
+                    if not secret:
+                        raise TaskError("Please start again.")
+                    store.enable_2fa(uid, secret, f.get("code", ""))
+                    session.pop("totp_setup", None)
+                    flash("Two-factor login is ON. From now on you also need the code from your app to sign in.",
+                          "success")
+                elif form == "2fa_off":
+                    store.disable_2fa(uid, f.get("password"), f.get("code", ""))
+                    flash("Two-factor login is OFF.", "success")
                 else:
-                    store.update_profile(g.user["id"], f.get("name"), f.get("email"), f.get("job_title"), f.get("color"))
+                    store.update_profile(uid, f.get("name"), f.get("email"), f.get("job_title"), f.get("color"),
+                                         f.get("lang"))
+                    if f.get("lang") in world.LANGUAGES:
+                        session["lang"] = f.get("lang")
                     flash("Profile saved.", "success")
             except TaskError as e:
                 flash(str(e), "error")
-            return redirect(url_for("profile"))
-        uid = g.user["id"]
-        return render_template("profile.html", s=store.stats(uid),
-                               created=store.tasks(creator=uid, sort="updated")[:8],
-                               my_projects=[p for p in store.projects(include_archived=True) if p["created_by"] == uid])
+            return redirect(url_for("profile") + ("#security" if (f.get("form") or "").startswith("2fa") else ""))
+        totp = None
+        if not g.user["totp_enabled"]:
+            session.setdefault("totp_setup", otp.new_secret())
+            secret = session["totp_setup"]
+            totp = {"secret": otp.grouped(secret) if hasattr(otp, "grouped") else secret,
+                    "uri": otp.uri(secret, g.user["email"], issuer="TaskFlow")}
+        return render_template("profile.html", s=store.stats(g.ws, uid),
+                               created=store.tasks(g.ws, creator=uid, sort="updated")[:8], totp=totp,
+                               my_projects=[p for p in store.projects(g.ws, include_archived=True)
+                                            if p["created_by"] == uid])
+
+    # ------------------------------------------------------------ about
+    @app.route("/about")
+    def about():
+        return render_template("about.html")
+
+    # ------------------------------------------------------------ resumes
+    import resume_views
+    resume_views.register(app, store, login_required)
 
     # ------------------------------------------------------------ errors
     @app.errorhandler(403)
@@ -634,8 +1145,13 @@ def create_app(db_path=None, seed=True, testing=False):
         return render_template("error.html", code=400, title="Something went wrong",
                                text=getattr(e, "description", "Bad request.")), 400
 
+    @app.errorhandler(413)
+    def too_big(e):
+        return render_template("error.html", code=413, title="The file is too big",
+                               text="Files can be at most 5 MB."), 413
+
     return app
 
 
 if __name__ == "__main__":
-    create_app().run(debug=os.environ.get("FLASK_DEBUG") == "1")
+    create_app().run(debug=os.environ.get("FLASK_DEBUG") == "1", port=int(os.environ.get("PORT", 5000)))

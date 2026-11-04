@@ -8,7 +8,7 @@
     <form method="post" class="form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <label>Title<input name="title" value="{{ form.get('title', '') }}" required minlength="3" maxlength="120" placeholder="e.g. Prepare monthly sales report" autofocus></label>
-      <label>Description<textarea name="description" rows="5" placeholder="Add details, links or steps…">{{ form.get('description', '') }}</textarea></label>
+      <label>Description<textarea name="description" rows="5" placeholder="Add details, links or steps… Use @name to notify a teammate.">{{ form.get('description', '') }}</textarea></label>
       <div class="row2">
         <label>Project
           <select name="project_id"><option value="">No project</option>
@@ -25,6 +25,9 @@
         <label>Priority
           <select name="priority">{% for k, n in PRIORITIES %}<option value="{{ k }}" {{ 'selected' if form.get('priority') == k }}>{{ n }}</option>{% endfor %}</select></label>
         <label>Due date<input type="date" name="due_date" value="{{ form.get('due_date', '') }}" {% if not task %}min="{{ today.isoformat() }}"{% endif %}></label>
+      </div>
+      <div class="row3">
+        <label>Estimate<input name="estimate" value="{{ form.get('estimate', '') }}" maxlength="20" placeholder="e.g. 2h, 90m, 1.5"><small class="muted">Optional. Used for the hours burndown chart.</small></label>
       </div>
       <div class="form-actions">
         <a class="btn btn-ghost" href="{{ url_for('task_detail', task_id=task.id) if task else url_for('task_list') }}">Cancel</a>

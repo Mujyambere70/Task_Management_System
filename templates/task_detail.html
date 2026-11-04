@@ -4,12 +4,12 @@
 {% block content %}
 <div class="crumbs"><a href="{{ url_for('task_list') }}">Tasks</a> / {% if t.project_name %}<a href="{{ url_for('board', project=t.project_id) }}">{{ t.project_name }}</a> / {% endif %}<span>#{{ t.id }}</span></div>
 
-<div class="detail">
+<div class="detail" data-live-task="{{ t.id }}">
   <section class="card">
     <div class="detail-head">
       <div>
         <div class="meta">{{ m.status_pill(t.status) }} {{ m.priority_pill(t.priority) }} {{ m.project_tag(t) }}</div>
-        <h1>{{ t.title }}</h1>
+        <h1 translate="no">{{ t.title }}</h1>
       </div>
       <div class="actions">
         {% if can_edit(t) %}<a class="btn btn-light" href="{{ url_for('task_edit', task_id=t.id) }}"><svg class="i"><use href="#i-edit"/></svg> Edit</a>{% endif %}
@@ -33,7 +33,7 @@
     {% endif %}
 
     <h3 class="sub">Description</h3>
-    <div class="desc">{{ t.description or 'No description.' }}</div>
+    {% if t.description %}<div class="desc" translate="no">{{ t.description }}</div>{% else %}<div class="desc muted">No description.</div>{% endif %}
 
     <h3 class="sub" id="checklist">Checklist{% if subtasks %} · {{ t.sub_done }}/{{ t.sub_total }}{% endif %}</h3>
     {% if subtasks %}<div class="progress chk-bar"><i style="width:{{ (t.sub_done / t.sub_total * 100)|round }}%"></i></div>{% endif %}
@@ -54,7 +54,7 @@
           <button class="icon-btn sm" title="Remove item"><svg class="i"><use href="#i-trash"/></svg></button>
         </form>
         {% else %}
-        <span class="box">{% if s.done %}<svg class="i"><use href="#i-tick"/></svg>{% endif %}</span><span class="chk-title">{{ s.title }}</span>
+        <span class="box">{% if s.done %}<svg class="i"><use href="#i-tick"/></svg>{% endif %}</span><span class="chk-title" translate="no">{{ s.title }}</span>
         {% endif %}
       </li>
       {% else %}<li class="muted empty-chk">No checklist yet. Break this task into small steps.</li>{% endfor %}
@@ -67,6 +67,73 @@
     </form>
     {% endif %}
 
+    <h3 class="sub" id="files">Files{% if files %} · {{ files|length }}{% endif %}</h3>
+    <ul class="files">
+      {% for f in files %}
+      <li>
+        {% if f.is_image %}<a href="{{ url_for('file_download', file_id=f.id) }}" target="_blank" class="thumb"><img src="{{ url_for('file_download', file_id=f.id) }}" alt="{{ f.name }}" loading="lazy"></a>
+        {% else %}<span class="ficon">{{ f.name.rsplit('.', 1)[-1]|upper if '.' in f.name else 'FILE' }}</span>{% endif %}
+        <div class="fmeta"><a href="{{ url_for('file_download', file_id=f.id) }}" target="_blank" translate="no">{{ f.name }}</a>
+          <small>{{ (f.size / 1024)|round(1) if f.size < 1048576 else (f.size / 1048576)|round(1) }} {{ 'KB' if f.size < 1048576 else 'MB' }} · {{ f.user_name or '—' }} · {{ f.created_at|ago }}</small></div>
+        <a class="icon-btn sm" href="{{ url_for('file_download', file_id=f.id) }}" download title="Download"><svg class="i"><use href="#i-download"/></svg></a>
+        {% if can_edit(t) or f.user_id == user.id %}
+        <form method="post" action="{{ url_for('file_delete', file_id=f.id) }}" data-confirm="Remove this file?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="icon-btn sm" title="Remove file"><svg class="i"><use href="#i-trash"/></svg></button></form>{% endif %}
+      </li>
+      {% else %}<li class="muted empty-chk">No files yet.</li>{% endfor %}
+    </ul>
+    {% if files|length < 10 %}
+    <form method="post" action="{{ url_for('file_upload', task_id=t.id) }}" enctype="multipart/form-data" class="dropzone" id="dropzone">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <svg class="i"><use href="#i-clip"/></svg>
+      <span>Drop files here or <label class="link">choose files<input type="file" name="file" multiple hidden accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv,.md,.json,.docx,.xlsx,.pptx,.odt,.ods,.zip,.py,.r,.ipynb,.sql"></label></span>
+      <small>PDF, pictures, Office, text, CSV or ZIP · max 5 MB each · up to 10 files per task</small>
+    </form>
+    {% endif %}
+
+    <h3 class="sub" id="time">Time{% if t.logged_minutes %} · {{ t.logged_minutes|hours }}{% endif %}{% if t.estimate_minutes %} <span class="muted">of {{ t.estimate_minutes|hours }} estimated</span>{% endif %}</h3>
+    {% if t.estimate_minutes %}{% set pct = (t.logged_minutes / t.estimate_minutes * 100)|round|int %}
+    <div class="progress {{ 'over' if pct > 100 }}"><i style="width:{{ [pct, 100]|min }}%"></i></div>
+    {% if pct > 100 %}<p class="small red">Logged time is {{ pct - 100 }}% over the estimate.</p>{% endif %}{% endif %}
+    <div class="time-bar">
+      <form method="post" action="{{ url_for('timer', task_id=t.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if timer and timer.task_id == t.id %}
+        <input type="hidden" name="action" value="stop">
+        <button class="btn btn-danger timer-btn"><span class="rec"></span> Stop timer · <span class="clock" data-since="{{ timer.started_at }}">0:00</span></button>
+        {% else %}
+        <button class="btn btn-light timer-btn"><svg class="i"><use href="#i-play"/></svg> Start timer</button>
+        {% endif %}
+      </form>
+      <form method="post" action="{{ url_for('time_log', task_id=t.id) }}" class="time-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input name="time" placeholder="1h 30m" required maxlength="20" title="For example 45m, 1.5, 1h 30m or 1:30">
+        <input type="date" name="day" value="{{ today.isoformat() }}" max="{{ today.isoformat() }}">
+        <input name="note" placeholder="What did you do? (optional)" maxlength="200">
+        <button class="btn btn-light sm"><svg class="i"><use href="#i-plus"/></svg> Log time</button>
+      </form>
+    </div>
+    {% if entries %}
+    <table class="table time-table">
+      <thead><tr><th>Person</th><th>Day</th><th>Time</th><th>Note</th><th></th></tr></thead>
+      <tbody>
+      {% for e in entries %}
+      <tr>
+        <td><span class="who">{{ m.avatar(e.name, e.color, 'xs') }}{{ e.name }}</span></td>
+        <td>{{ e.started_at[:10]|nice_date }}</td>
+        <td>{% if e.ended_at %}<b>{{ e.minutes|hours }}</b>{% else %}<span class="pill st-in_progress">running</span>{% endif %}</td>
+        <td class="muted">{{ e.note }}</td>
+        <td>{% if e.ended_at and (user.role == 'admin' or e.user_id == user.id) %}
+          <form method="post" action="{{ url_for('time_delete', entry_id=e.id) }}" data-confirm="Remove this time entry?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="icon-btn sm" title="Remove"><svg class="i"><use href="#i-trash"/></svg></button></form>{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
     <h3 class="sub" id="comments">Comments · {{ comments|length }}</h3>
     <ul class="comments">
       {% for c in comments %}
@@ -75,7 +142,7 @@
         <form method="post" action="{{ url_for('comment_delete', comment_id=c.id) }}" class="c-del" data-confirm="Delete this comment?">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button title="Delete comment"><svg class="i"><use href="#i-trash"/></svg></button></form>{% endif %}
         {% if c.user_id == user.id %}<button type="button" class="c-edit-btn" title="Edit comment"><svg class="i"><use href="#i-edit"/></svg></button>{% endif %}
-        </div><p>{{ c.body }}</p>
+        </div><p translate="no">{{ c.body }}</p>
         {% if c.user_id == user.id %}
         <form method="post" action="{{ url_for('comment_edit', comment_id=c.id) }}" class="c-edit" hidden>
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -88,9 +155,10 @@
     <form method="post" action="{{ url_for('task_comment', task_id=t.id) }}" class="comment-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       {{ m.avatar(user.name, user.color) }}
-      <textarea name="body" rows="2" placeholder="Write a comment…" required maxlength="2000"></textarea>
+      <textarea name="body" rows="2" placeholder="Write a comment… Use @name to notify a teammate." required maxlength="2000"></textarea>
       <button class="btn btn-primary">Send</button>
     </form>
+    <p class="hint">Mention: {% for u in members if u.id != user.id %}<button type="button" class="mention" data-name="@{{ u.name.split()[0] }}">@{{ u.name.split()[0] }}</button>{% endfor %}</p>
   </section>
 
   <aside>
@@ -99,6 +167,8 @@
         <dt>Assignee</dt><dd><span class="who">{{ m.avatar(t.assignee_name, t.assignee_color, 'sm') }}{{ t.assignee_name or 'Unassigned' }}</span></dd>
         <dt>Due date</dt><dd>{% if t.due_date %}{{ t.due_date|nice_date }} {{ m.due(t) }}{% else %}—{% endif %}</dd>
         <dt>Project</dt><dd>{{ m.project_tag(t) or 'No project' }}</dd>
+        <dt>Estimate</dt><dd>{{ t.estimate_minutes|hours if t.estimate_minutes else '—' }}</dd>
+        <dt>Time logged</dt><dd>{{ t.logged_minutes|hours if t.logged_minutes else '—' }}</dd>
         <dt>Created by</dt><dd>{{ t.creator_name }}</dd>
         <dt>Created</dt><dd>{{ t.created_at[:10]|nice_date }}</dd>
         <dt>Last update</dt><dd>{{ t.updated_at|ago }}</dd>

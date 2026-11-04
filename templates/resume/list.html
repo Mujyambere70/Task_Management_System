@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}My resumes{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>My resumes</h1><p class="muted">Design your resume, then share a link, print it or save it as PDF. Your resumes belong to you, not to a workspace.</p></div>
+  <div class="actions">
+    <a class="btn btn-light" href="{{ url_for('explore') }}"><svg class="i"><use href="#i-globe"/></svg> Explore resumes</a>
+    <button class="btn btn-light" data-open="importDialog"><svg class="i"><use href="#i-upload"/></svg> Import</button>
+    <button class="btn btn-primary" data-open="newResume"><svg class="i"><use href="#i-plus"/></svg> New resume</button>
+  </div>
+</div>
+
+<div class="resume-grid">
+  {% for r in resumes %}
+  <section class="card resume-card">
+    <a class="resume-thumb" href="{{ url_for('resume_edit', resume_id=r.id) }}" title="Edit">
+      <iframe src="{{ url_for('resume_public', slug=r.slug, embed=1) }}" loading="lazy" tabindex="-1" title="Preview"></iframe>
+    </a>
+    <div class="resume-info">
+      <h2 translate="no">{{ r.title }}</h2>
+      <p class="muted small"><span class="pill {{ 'st-done' if r.visibility == 'public' else 'st-review' if r.visibility == 'link' else 'st-todo' }}">{{ VISIBILITY[r.visibility] }}</span>
+        · <span>{{ THEMES[r.theme] }}</span> · <span translate="no">{{ LANGUAGES[r.lang] }}</span></p>
+      <p class="muted small">{{ 'Views:'|tr }} {{ r.views }} · {{ 'Last update:'|tr }} {{ r.updated_at|ago }}</p>
+      {% if r.visibility != 'private' %}<p class="small"><a href="{{ url_for('resume_public', slug=r.slug) }}" target="_blank" translate="no">/r/{{ r.slug }}</a></p>{% endif %}
+      <div class="proj-actions">
+        <a class="btn btn-primary sm" href="{{ url_for('resume_edit', resume_id=r.id) }}"><svg class="i"><use href="#i-edit"/></svg> Edit</a>
+        <a class="btn btn-light sm" href="{{ url_for('resume_public', slug=r.slug) }}" target="_blank"><svg class="i"><use href="#i-eye"/></svg> View</a>
+        <form method="post" action="{{ url_for('resume_duplicate', resume_id=r.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-ghost sm"><svg class="i"><use href="#i-copy"/></svg> Duplicate</button></form>
+        <a class="btn btn-ghost sm" href="{{ url_for('resume_export', resume_id=r.id) }}"><svg class="i"><use href="#i-download"/></svg> JSON</a>
+        <form method="post" action="{{ url_for('resume_delete', resume_id=r.id) }}" data-confirm="Delete this resume? The link stops working."><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-danger-ghost sm"><svg class="i"><use href="#i-trash"/></svg></button></form>
+      </div>
+    </div>
+  </section>
+  {% else %}
+  <section class="card empty resume-empty">
+    <svg class="i xl"><use href="#i-id"/></svg>
+    <b>You have no resume yet.</b>
+    <p class="muted">Start with your name and job title from your profile, then add experience, education, projects and skills.</p>
+    <button class="btn btn-primary" data-open="newResume"><svg class="i"><use href="#i-plus"/></svg> Make my first resume</button>
+  </section>
+  {% endfor %}
+</div>
+
+<dialog id="newResume" class="dialog">
+  <form method="post" action="{{ url_for('resume_new') }}" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2>New resume</h2>
+    <label>Name of this resume <small>(only you see it)</small><input name="title" value="{{ 'My resume'|tr }}" maxlength="60" required></label>
+    <label>Design</label>
+    <div class="theme-pick">
+      {% for k, n in THEMES.items() %}<label><input type="radio" name="theme" value="{{ k }}" {{ 'checked' if loop.first }}><span class="tp tp-{{ k }}"><i></i><i></i><i></i></span><small>{{ n }}</small></label>{% endfor %}
+    </div>
+    <div class="row2">
+      <label>Accent color<input type="color" name="accent" value="#4f46e5"></label>
+      <label>Language of the headings<select name="lang" translate="no">{% for code, name in LANGUAGES.items() %}<option value="{{ code }}" {{ 'selected' if code == lang }}>{{ name }}</option>{% endfor %}</select></label>
+    </div>
+    <div class="form-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary">Create and edit</button></div>
+  </form>
+</dialog>
+
+<dialog id="importDialog" class="dialog">
+  <form method="post" action="{{ url_for('resume_import') }}" class="form" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2>Import a resume</h2>
+    <p class="muted small">Use a file you exported from TaskFlow, or a resume in the open <a href="https://jsonresume.org/schema" target="_blank" rel="noopener">JSON Resume</a> format.</p>
+    <label>JSON file<input type="file" name="file" accept=".json,application/json"></label>
+    <label>…or paste the JSON<textarea name="text" rows="5" placeholder='{"basics": {"name": "…"}}'></textarea></label>
+    <div class="form-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary">Import</button></div>
+  </form>
+</dialog>
+{% endblock %}

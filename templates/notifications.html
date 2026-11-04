@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Notifications</h1><p class="muted">Tasks assigned to you, mentions, comments on your tasks and deadline reminders — from all your workspaces.</p></div>
+  <a class="btn btn-light" href="{{ url_for('profile') }}#notify"><svg class="i"><use href="#i-settings"/></svg> Reminder settings</a>
+</div>
+<section class="card flush">
+  <ul class="notes">
+    {% for n in rows %}
+    <li class="{{ 'new' if not n.seen }}">
+      <span class="note-ic k-{{ n.kind }}"><svg class="i"><use href="#{{ {'reminder': 'i-clock', 'mention': 'i-chat', 'comment': 'i-chat', 'assigned': 'i-check', 'added': 'i-users'}.get(n.kind, 'i-bell') }}"/></svg></span>
+      <div>
+        {% if n.task_id %}<a href="{{ url_for('task_detail', task_id=n.task_id) }}" translate="no">{{ n.text }}</a>{% else %}<span translate="no">{{ n.text }}</span>{% endif %}
+        <small>{{ n.created_at|ago }}{% if n.workspace_name %} · <span translate="no">{{ n.workspace_name }}</span>{% endif %}{% if n.emailed and n.emailed.startswith('sent') %} · {{ 'also sent by email'|tr }}{% endif %}</small>
+      </div>
+    </li>
+    {% else %}
+    <li><div class="empty"><b>No notifications yet.</b><br>You will see here when someone assigns you a task, mentions you or a deadline is near.</div></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

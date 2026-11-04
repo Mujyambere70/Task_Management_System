@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}{{ r.title }} · {{ 'Resume editor'|tr }}{% endblock %}
+{% block body_class %}rz-body{% endblock %}
+{% block content %}
+{% set c = r.content %}
+<div class="rz" id="rz" data-save="{{ url_for('resume_save', resume_id=r.id) }}" data-photo="{{ url_for('resume_photo_upload', resume_id=r.id) }}"
+     data-preview="{{ url_for('resume_public', slug=r.slug, embed=1) }}" data-public="{{ url_for('resume_public', slug=r.slug) }}">
+  <div class="rz-top">
+    <a class="icon-btn bordered" href="{{ url_for('resume_list') }}" title="My resumes"><svg class="i"><use href="#i-left"/></svg></a>
+    <input class="rz-title" data-set="title" value="{{ r.title }}" maxlength="60" aria-label="Name of this resume">
+    <span class="rz-status" id="rzStatus"><svg class="i"><use href="#i-tick"/></svg> {{ 'Saved'|tr }}</span>
+    <div class="actions">
+      <button class="btn btn-ghost sm rz-preview-btn" type="button" id="rzShowPreview"><svg class="i"><use href="#i-eye"/></svg> Preview</button>
+      <a class="btn btn-light sm" id="rzOpen" href="{{ url_for('resume_public', slug=r.slug) }}" target="_blank"><svg class="i"><use href="#i-print"/></svg> Open · Print · PDF</a>
+      <a class="btn btn-light sm" href="{{ url_for('resume_export', resume_id=r.id) }}"><svg class="i"><use href="#i-download"/></svg> JSON</a>
+    </div>
+  </div>
+
+  <div class="rz-cols">
+    <div class="rz-form" id="rzForm">
+
+      <section class="card rz-card" id="rzShare">
+        <h3><svg class="i"><use href="#i-share"/></svg> Who can see it</h3>
+        <div class="vis-pick">
+          {% for k, n in VISIBILITY.items() %}
+          <label><input type="radio" name="visibility" data-set="visibility" value="{{ k }}" {{ 'checked' if r.visibility == k }}>
+            <span><svg class="i"><use href="#{{ 'i-eye-off' if k == 'private' else 'i-link' if k == 'link' else 'i-globe' }}"/></svg><b>{{ n }}</b></span></label>
+          {% endfor %}
+        </div>
+        <label class="rz-label">Your link</label>
+        <div class="copy-row slug-row"><span class="slug-base" translate="no">{{ share_url.rsplit('/', 1)[0] }}/</span>
+          <input data-set="slug" value="{{ r.slug }}" maxlength="40" pattern="[a-z0-9][a-z0-9\-]{1,38}[a-z0-9]" translate="no" aria-label="Link name">
+          <button class="btn btn-light sm" type="button" id="rzCopy"><svg class="i"><use href="#i-copy"/></svg> Copy</button></div>
+        <small class="muted">Small letters, digits and dashes. If you change it, the old link stops working.</small>
+      </section>
+
+      <section class="card rz-card">
+        <h3><svg class="i"><use href="#i-settings"/></svg> Design</h3>
+        <div class="theme-pick">
+          {% for k, n in THEMES.items() %}<label><input type="radio" name="theme" data-set="theme" value="{{ k }}" {{ 'checked' if r.theme == k }}><span class="tp tp-{{ k }}"><i></i><i></i><i></i></span><small>{{ n }}</small></label>{% endfor %}
+        </div>
+        <label class="rz-label">Accent color</label>
+        <div class="accent-row">
+          {% for col in ['#4f46e5', '#0f766e', '#0369a1', '#b91c1c', '#c2410c', '#7c3aed', '#be185d', '#1f2937'] %}
+          <button type="button" class="accent-dot" data-accent="{{ col }}" style="background:{{ col }}" aria-label="{{ col }}"></button>{% endfor %}
+          <input type="color" data-set="accent" value="{{ r.accent }}" aria-label="Accent color">
+        </div>
+        <div class="row2">
+          <label>Font<select data-set="font">{% for k, n in FONTS.items() %}<option value="{{ k }}" {{ 'selected' if r.font == k }}>{{ n }}</option>{% endfor %}</select></label>
+          <label>Language of the headings<select data-set="lang" translate="no">{% for code, name in LANGUAGES.items() %}<option value="{{ code }}" {{ 'selected' if r.lang == code }}>{{ name }}</option>{% endfor %}</select></label>
+        </div>
+      </section>
+
+      <section class="card rz-card">
+        <h3><svg class="i"><use href="#i-id"/></svg> Name, photo and contacts</h3>
+        <div class="rz-photo">
+          <div class="rz-photo-img" id="rzPhoto">{% if r.has_photo %}<img src="{{ url_for('resume_photo', slug=r.slug, v=r.updated_at[-8:]) }}" alt="">{% else %}<svg class="i"><use href="#i-users"/></svg>{% endif %}</div>
+          <div>
+            <label class="btn btn-light sm"><svg class="i"><use href="#i-upload"/></svg> Upload photo<input type="file" id="rzPhotoInput" accept="image/png,image/jpeg,image/webp" hidden></label>
+            <button type="button" class="btn btn-ghost sm" id="rzPhotoRemove" {{ 'hidden' if not r.has_photo }}>Remove</button>
+            <p class="muted small">Optional. JPG, PNG or WEBP, max 5 MB. It is cut to a square.</p>
+          </div>
+        </div>
+        <div class="row2">
+          <label>Full name<input data-c="name" value="{{ c.name }}" maxlength="200" required></label>
+          <label>Headline<input data-c="headline" value="{{ c.headline }}" maxlength="200" placeholder="e.g. Python Developer | Data Analyst"></label>
+        </div>
+        <div class="row2">
+          <label>Email<input type="email" data-c="email" value="{{ c.email }}" maxlength="120"></label>
+          <label>Phone <small>(optional)</small><input data-c="phone" value="{{ c.phone }}" maxlength="200"></label>
+        </div>
+        <div class="row2">
+          <label>City, country<input data-c="location" value="{{ c.location }}" maxlength="200"></label>
+          <label>Website<input data-c="website" value="{{ c.website }}" maxlength="300" placeholder="https://"></label>
+        </div>
+        <p class="hint"><svg class="i"><use href="#i-info"/></svg> Everything you write here is visible to anybody who has the link. Leave out what you want to keep private (for example your phone number).</p>
+        <label class="rz-label">Links (GitHub, LinkedIn, portfolio…)</label>
+        <div id="rzLinks"></div>
+        <button type="button" class="btn btn-ghost sm" id="rzAddLink"><svg class="i"><use href="#i-plus"/></svg> Add link</button>
+      </section>
+
+      <section class="card rz-card">
+        <h3><svg class="i"><use href="#i-edit"/></svg> Profile (short summary)</h3>
+        <textarea data-c="summary" rows="4" maxlength="3000" placeholder="Two or three sentences about you: who you are, what you are good at and what you are looking for.">{{ c.summary }}</textarea>
+      </section>
+
+      <div id="rzSections"></div>
+
+      <section class="card rz-card rz-add">
+        <h3><svg class="i"><use href="#i-plus"/></svg> Add a section</h3>
+        <div class="rz-add-grid">
+          {% for k, n in section_names.items() %}<button type="button" class="btn btn-light sm" data-add-section="{{ k }}">{{ n }}</button>{% endfor %}
+        </div>
+        <p class="muted small">{{ '“{0}” has free fields for anything else: volunteering, publications, courses… “{1}” is a block of free text.'|tr|replace('{0}', section_names['custom'])|replace('{1}', section_names['text']) }}</p>
+      </section>
+    </div>
+
+    <div class="rz-preview" id="rzPreview">
+      <div class="rz-frame-wrap" id="rzFrameWrap"><iframe id="rzFrame" src="{{ url_for('resume_public', slug=r.slug, embed=1) }}" title="Preview"></iframe></div>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="rzData">{{ {'content': c, 'schema': schema, 'strings': strings}|tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='resume-editor.js') }}"></script>{% endblock %}

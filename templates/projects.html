@@ -12,9 +12,9 @@
       <span class="proj-ic"><svg class="i"><use href="#i-folder"/></svg></span>
       {% if p.archived %}<span class="pill">Archived</span>{% endif %}
     </div>
-    <h2><a href="{{ url_for('board', project=p.id) }}">{{ p.name }}</a></h2>
-    <p class="muted">{{ p.description or 'No description' }}</p>
-    <small class="muted">Owner: <b>{{ 'You' if p.created_by == user.id else (p.owner_name or '—') }}</b></small>
+    <h2><a href="{{ url_for('board', project=p.id) }}" translate="no">{{ p.name }}</a></h2>
+    {% if p.description %}<p class="muted" translate="no">{{ p.description }}</p>{% else %}<p class="muted">No description</p>{% endif %}
+    <small class="muted">Owner: {% if p.created_by == user.id %}<b>You</b>{% else %}<b translate="no">{{ p.owner_name or '—' }}</b>{% endif %}</small>
     <div class="proj-stats"><span><b>{{ p.total }}</b> tasks</span><span><b>{{ p.total - p.done }}</b> open</span><span><b>{{ p.progress }}%</b> done</span></div>
     <div class="progress"><i style="width:{{ p.progress }}%;background:{{ p.color }}"></i></div>
     <div class="proj-actions">
@@ -27,6 +27,8 @@
       {% endif %}
     </div>
   </section>
+  {% else %}
+  <div class="card empty"><b>No projects yet.</b><br>Projects group tasks, for example “Website” or “Marketing”.</div>
   {% endfor %}
 </div>
 

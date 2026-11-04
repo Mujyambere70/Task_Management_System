@@ -1,0 +1,66 @@
+{% extends "resume/_embed_base.html" if embed else "public_base.html" %}
+{% block title %}{{ c.name }}{% if c.headline %} — {{ c.headline }}{% endif %}{% endblock %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@400;700&family=Roboto+Slab:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='resume.css') }}">
+{% if not embed %}
+<meta name="description" content="{{ c.headline }}{% if c.location %} · {{ c.location }}{% endif %}">
+<meta property="og:type" content="profile">
+<meta property="og:title" content="{{ c.name }}">
+<meta property="og:description" content="{{ c.headline }}">
+<meta property="og:url" content="{{ share_url }}">
+{% if photo %}<meta property="og:image" content="{{ share_url.rsplit('/r/', 1)[0] }}{{ photo }}">{% endif %}
+{% if r.visibility != 'public' %}<meta name="robots" content="noindex">{% endif %}
+<link rel="canonical" href="{{ share_url }}">
+{% endif %}
+{% endblock %}
+{% block body_class %}cv-page{% endblock %}
+{% block content %}
+{% if not embed %}
+<div class="cv-toolbar no-print">
+  <div class="cv-tool-left">
+    {% if mine %}
+    <a class="btn btn-primary sm" href="{{ url_for('resume_edit', resume_id=r.id) }}"><svg class="i"><use href="#i-edit"/></svg> Edit</a>
+    <span class="pill {{ 'st-done' if r.visibility == 'public' else 'st-review' if r.visibility == 'link' else 'st-todo' }}"><svg class="i"><use href="#{{ 'i-globe' if r.visibility == 'public' else 'i-link' if r.visibility == 'link' else 'i-eye-off' }}"/></svg> {{ VISIBILITY[r.visibility] }}</span>
+    <span class="muted small">{{ 'Views:'|tr }} {{ r.views }}</span>
+    {% else %}
+    <span class="muted small">{{ 'Resume made with TaskFlow'|tr }}</span>
+    {% endif %}
+  </div>
+  <div class="cv-tool-right">
+    <button class="btn btn-light sm" onclick="window.print()"><svg class="i"><use href="#i-print"/></svg> Print / Save as PDF</button>
+    {% if r.visibility != 'private' %}
+    <button class="btn btn-light sm" data-copy-text="{{ share_url }}"><svg class="i"><use href="#i-copy"/></svg> Copy link</button>
+    <details class="share-menu">
+      <summary class="btn btn-light sm"><svg class="i"><use href="#i-share"/></svg> Share</summary>
+      <div class="share-pop">
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url|urlencode }}" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://wa.me/?text={{ (c.name ~ ' — ' ~ share_url)|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+        <a href="https://t.me/share/url?url={{ share_url|urlencode }}&amp;text={{ c.name|urlencode }}" target="_blank" rel="noopener">Telegram</a>
+        <a href="https://twitter.com/intent/tweet?url={{ share_url|urlencode }}" target="_blank" rel="noopener">X (Twitter)</a>
+        <a href="mailto:?subject={{ c.name|urlencode }}&amp;body={{ share_url|urlencode }}">Email</a>
+        <div class="qr" id="cvQr" data-uri="{{ share_url }}"></div>
+        <small class="muted">Scan to open this resume</small>
+      </div>
+    </details>
+    {% elif mine %}
+    <span class="muted small">Only you can see this resume. Choose “Anyone with the link” in the editor to share it.</span>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+<div class="cv-stage">
+{% include "resume/_sheet.html" %}
+</div>
+{% if not embed %}
+<p class="cv-foot no-print muted small">{{ 'Last update:'|tr }} {{ fmt_date(r.updated_at) }} · <a href="{{ url_for('explore') }}">Explore more resumes</a>{% if not user %} · <a href="{{ url_for('register') }}">Make your own resume</a>{% endif %}
+{% if user and user.site_admin and not mine %} ·
+<form method="post" action="{{ url_for('resume_delete', resume_id=r.id) }}" class="inline" data-confirm="Remove this resume from the site?"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="link red small">Remove (site admin)</button></form>{% endif %}</p>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if not embed and r.visibility != 'private' %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>document.querySelector('.share-menu').addEventListener('toggle', function () { TF.qr(document.getElementById('cvQr'), 4); }, {once: true});</script>
+{% endif %}
+{% endblock %}

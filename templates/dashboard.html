@@ -4,8 +4,8 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Good {{ 'morning' if now_hour < 12 else 'afternoon' if now_hour < 18 else 'evening' }}, {{ user.name.split()[0] }} 👋</h1>
-    <p class="muted">You have <b>{{ my.open }}</b> open tasks{% if my.overdue %}, <b class="red">{{ my.overdue }} overdue</b>{% endif %}{% if my.due_today %} and <b>{{ my.due_today }}</b> due today{% endif %}.</p>
+    <h1>{{ ('Good morning, {0}!' if now_hour < 12 else 'Good afternoon, {0}!' if now_hour < 18 else 'Good evening, {0}!')|tr|replace('{0}', user.name.split()[0]) }} 👋</h1>
+    <p class="muted">{{ 'Workspace'|tr }} <b translate="no">{{ workspace.name }}</b> · {{ 'Open tasks'|tr }}: <b>{{ my.open }}</b>{% if my.overdue %} · <b class="red">{{ 'Overdue'|tr }}: {{ my.overdue }}</b>{% endif %}{% if my.due_today %} · {{ 'Due today'|tr }}: <b>{{ my.due_today }}</b>{% endif %}</p>
   </div>
   <a class="btn btn-primary" href="{{ url_for('task_new') }}"><svg class="i"><use href="#i-plus"/></svg> New task</a>
 </div>
@@ -36,7 +36,7 @@
 
   <section class="card">
     <div class="card-head"><h2>Team activity</h2><a href="{{ url_for('reports') }}#activity">More</a></div>
-    <ul class="feed">
+    <ul class="feed" id="liveFeed">
       {% for a in activity %}
       <li>{{ m.avatar(a.name, a.color, 'sm') }}<div>{{ m.activity_text(a) }}<small>{{ a.created_at|ago }}</small></div></li>
       {% endfor %}
@@ -60,7 +60,7 @@
     {% set peak = chart|map(attribute=1)|max or 1 %}
     <div class="bars">
       {% for d, n in chart %}
-      <div class="bar" title="{{ d.strftime('%d %b') }}: {{ n }} completed"><em>{{ n if n }}</em><i style="height:{{ (n / peak * 100)|round }}%"></i><span>{{ d.strftime('%d') }}</span></div>
+      <div class="bar" title="{{ fmt_date(d, 'd MMM') }}: {{ n }}"><em>{{ n if n }}</em><i style="height:{{ (n / peak * 100)|round }}%"></i><span>{{ d.strftime('%d') }}</span></div>
       {% endfor %}
     </div>
   </section>
@@ -68,9 +68,10 @@
     <div class="card-head"><h2>Projects</h2><a href="{{ url_for('projects') }}">Manage</a></div>
     {% for p in projects %}
     <a class="proj-line" href="{{ url_for('board', project=p.id) }}">
-      <span><i class="dot" style="background:{{ p.color }}"></i>{{ p.name }}</span><small>{{ p.done }}/{{ p.total }}</small>
+      <span><i class="dot" style="background:{{ p.color }}"></i><span translate="no">{{ p.name }}</span></span><small>{{ p.done }}/{{ p.total }}</small>
       <div class="progress"><i style="width:{{ p.progress }}%;background:{{ p.color }}"></i></div>
     </a>
+    {% else %}<div class="empty small">No projects yet. <a href="{{ url_for('projects') }}">Create the first one</a>.</div>
     {% endfor %}
   </section>
 </div>

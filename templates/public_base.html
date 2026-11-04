@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}TaskFlow{% endblock %}</title>
+<link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body class="public {% block body_class %}{% endblock %}">
+{% include "_icons.html" %}
+<header class="pub-bar no-print">
+  <a class="brand" href="{{ url_for('dashboard') if user else url_for('explore') }}"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="" width="30" height="30"><span>TaskFlow</span></a>
+  <nav>
+    <a href="{{ url_for('explore') }}" class="{{ 'on' if request.endpoint == 'explore' }}"><svg class="i"><use href="#i-globe"/></svg> <span>Explore resumes</span></a>
+    <a href="{{ url_for('about') }}" class="{{ 'on' if request.endpoint == 'about' }}"><svg class="i"><use href="#i-info"/></svg> <span>About</span></a>
+  </nav>
+  <div class="pub-right">
+    {% include "_lang.html" %}
+    {% if user %}<a class="btn btn-light sm" href="{{ url_for('resume_list') }}"><svg class="i"><use href="#i-id"/></svg> My resumes</a>
+    <a class="btn btn-primary sm" href="{{ url_for('dashboard') }}">Open TaskFlow</a>
+    {% else %}<a class="btn btn-light sm" href="{{ url_for('login') }}">Sign in</a>
+    {% if settings.allow_registration == '1' %}<a class="btn btn-primary sm" href="{{ url_for('register') }}">Create a free account</a>{% endif %}{% endif %}
+  </div>
+</header>
+{% with msgs = get_flashed_messages(with_categories=true) %}
+{% if msgs %}<div class="toasts">{% for cat, m in msgs %}<div class="toast {{ cat }}">{{ m }}<button class="x" aria-label="Close">×</button></div>{% endfor %}</div>{% endif %}
+{% endwith %}
+<main class="pub-main">{% block content %}{% endblock %}</main>
+<footer class="pub-foot no-print">TaskFlow · Designed &amp; developed by <a href="{{ url_for('about') }}">Jean Michel Mujyambere</a> · <a href="https://github.com/Mujyambere70" target="_blank" rel="noopener">GitHub</a></footer>
+<script>window.TF = {{ {'lang': lang, 'csrf': csrf_token, 'strings': {'Copied!': 'Copied!'|tr}}|tojson }};</script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

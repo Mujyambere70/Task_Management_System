@@ -1,55 +1,67 @@
 {% extends "base.html" %}
-{% block title %}Admin panel{% endblock %}
+{% block title %}Site admin{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Admin panel</h1><p class="muted">Manage the workspace, people, data and your own account</p></div>
+  <div><h1>Site administration</h1><p class="muted">Settings of the whole TaskFlow site, the database and maintenance. Workspace admins manage their own workspace in “Workspace settings”.</p></div>
   <div class="actions">
-    <a class="btn btn-light" href="{{ url_for('team') }}"><svg class="i"><use href="#i-users"/></svg> Manage team</a>
-    <a class="btn btn-light" href="{{ url_for('projects') }}"><svg class="i"><use href="#i-folder"/></svg> Manage projects</a>
+    <a class="btn btn-light" href="{{ url_for('workspace_settings') if user.role == 'admin' else url_for('team') }}"><svg class="i"><use href="#i-settings"/></svg> This workspace</a>
     <a class="btn btn-primary" href="{{ url_for('profile') }}"><svg class="i"><use href="#i-edit"/></svg> My personal details</a>
   </div>
 </div>
 
 <div class="stat-chips">
-  {% for t, n in counts.items() %}<div><b>{{ n }}</b><small>{{ t }}</small></div>{% endfor %}
+  {% for t, n in counts.items() %}<div><b>{{ n }}</b><small translate="no">{{ t }}</small></div>{% endfor %}
 </div>
 
 <div class="tabs admin-tabs">
-  {% for key, label in [('settings', 'Workspace settings'), ('data', 'Database'), ('maintenance', 'Maintenance')] %}
+  {% for key, label in [('site', 'Site settings'), ('data', 'Database'), ('maintenance', 'Maintenance')] %}
   <a href="{{ url_for('admin_panel', tab=key, table=table if key == 'data' else None) }}" class="{{ 'on' if tab == key }}">{{ label }}</a>
   {% endfor %}
 </div>
 
-{% if tab == 'settings' %}
+{% if tab == 'site' %}
+<div class="grid-2">
 <section class="card settings-form">
-  <h2>Workspace settings</h2>
+  <h2>Site settings</h2>
   <form method="post" action="{{ url_for('admin_settings') }}" class="form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>Workspace name <small>shown in the sidebar, login page and browser tab</small>
-      <input name="workspace_name" value="{{ settings.workspace_name }}" required minlength="2" maxlength="40"></label>
-    <label class="toggle"><span>Allow new people to sign up<small>If off, only admins can add members (Team → Add member).</small></span>
+    <label class="toggle"><span>Allow new people to sign up<small>If off, people can only join with an invite link or when an admin adds them.</small></span>
       <input type="checkbox" name="allow_registration" value="1" {{ 'checked' if settings.allow_registration == '1' }}></label>
-    <label>Default priority for new tasks
-      <select name="default_priority">{% for k, n in PRIORITIES %}<option value="{{ k }}" {{ 'selected' if settings.default_priority == k }}>{{ n }}</option>{% endfor %}</select></label>
     <div class="form-actions"><button class="btn btn-primary">Save settings</button></div>
   </form>
 </section>
+<section class="card">
+  <h2>Services</h2>
+  <ul class="services">
+    <li><svg class="i"><use href="#i-database"/></svg><div><b>Database</b><small translate="no">{{ services.database }}</small></div><span class="pill st-done">OK</span></li>
+    <li><svg class="i"><use href="#i-bell"/></svg><div><b>Email (reminders, password reset)</b>
+      <small>{% if services.email %}<span translate="no">{{ services.email }}</span>{% else %}Not set up: add BREVO_API_KEY or SMTP_HOST to the server settings.{% endif %}</small></div>
+      <span class="pill {{ 'st-done' if services.email else 'st-todo' }}">{{ 'On' if services.email else 'Off' }}</span></li>
+    <li><svg class="i"><use href="#i-bolt"/></svg><div><b>Live updates (WebSocket)</b><small>{{ 'Boards update at once.' if services.websockets else 'Pages ask the server every few seconds instead.' }}</small></div>
+      <span class="pill {{ 'st-done' if services.websockets else 'st-review' }}">{{ 'On' if services.websockets else 'Polling' }}</span></li>
+    <li><svg class="i"><use href="#i-clock"/></svg><div><b>Scheduled reminders</b><small>{{ 'An outside scheduler can call /cron/run with the CRON_KEY.' if services.cron else 'Reminders are checked while people use the site (every 10 minutes). Set CRON_KEY to call /cron/run from a scheduler.' }}</small></div>
+      <span class="pill {{ 'st-done' if services.cron else 'st-review' }}">{{ 'Cron' if services.cron else 'Built-in' }}</span></li>
+    <li><svg class="i"><use href="#i-link"/></svg><div><b>Public address (APP_URL)</b><small translate="no">{{ services.app_url or '—' }}</small></div>
+      <span class="pill {{ 'st-done' if services.app_url else 'st-todo' }}">{{ 'On' if services.app_url else 'Off' }}</span></li>
+  </ul>
+</section>
+</div>
 
 {% elif tab == 'data' %}
-<div class="db-tabs">
+<div class="db-tabs" translate="no">
   {% for t, n in counts.items() %}<a href="{{ url_for('admin_panel', tab='data', table=t) }}" class="{{ 'on' if t == table }}">{{ t }}<em>{{ n }}</em></a>{% endfor %}
 </div>
 <div class="card flush">
   <div class="card-head" style="padding:14px 16px;margin:0">
-    <h2>{{ table }} <small class="muted">· showing {{ rows|length }} of {{ total }} rows (newest first){% if table == 'users' %} · passwords hidden{% endif %}</small></h2>
+    <h2><span translate="no">{{ table }}</span> <small class="muted">· {{ 'Rows shown:'|tr }} {{ rows|length }} / {{ total }} · {{ 'secret columns are hidden'|tr }}</small></h2>
     <a class="btn btn-light sm" href="{{ url_for('admin_table_csv', table=table) }}"><svg class="i"><use href="#i-download"/></svg> CSV</a>
   </div>
-  <div class="db-wrap">
+  <div class="db-wrap" translate="no">
     <table class="table">
       <thead><tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
       <tbody>
         {% for r in rows %}<tr>{% for v in r %}<td class="{{ 'null' if v is none }}" title="{{ v if v is not none }}">{{ 'NULL' if v is none else v }}</td>{% endfor %}</tr>
-        {% else %}<tr><td colspan="{{ cols|length or 1 }}"><div class="empty">This table is empty.</div></td></tr>{% endfor %}
+        {% else %}<tr><td colspan="{{ cols|length or 1 }}"><div class="empty">—</div></td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
@@ -61,7 +73,14 @@
   <h2>Maintenance</h2>
   <div class="danger-list">
     <div class="danger-item">
-      <div><b>Clear the activity log</b><p class="muted small">Remove old activity entries. Tasks and comments are not changed.</p></div>
+      <div><b>Send deadline reminders now</b><p class="muted small">Normally this runs by itself every 10 minutes. Demo addresses (.demo) only get the reminder on the site, never by email.</p></div>
+      <form method="post" action="{{ url_for('admin_maintenance') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="send_reminders">
+        <button class="btn btn-light sm"><svg class="i"><use href="#i-bell"/></svg> Send reminders</button>
+      </form>
+    </div>
+    <div class="danger-item">
+      <div><b>Clear the activity log</b><p class="muted small">Remove old activity entries in all workspaces. Tasks and comments are not changed.</p></div>
       <form method="post" action="{{ url_for('admin_maintenance') }}" data-confirm="Remove these activity entries?">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="clear_activity">
         <select name="days"><option value="30">Older than 30 days</option><option value="7">Older than 7 days</option><option value="0">Everything</option></select>
@@ -69,19 +88,11 @@
       </form>
     </div>
     <div class="danger-item">
-      <div><b>Remove old completed tasks</b><p class="muted small">Delete tasks that were finished a long time ago (with their comments).</p></div>
-      <form method="post" action="{{ url_for('admin_maintenance') }}" data-confirm="Delete these completed tasks? This cannot be undone.">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="clean_tasks">
-        <select name="days"><option value="90">Done over 90 days ago</option><option value="30">Done over 30 days ago</option><option value="0">All completed tasks</option></select>
-        <button class="btn btn-light sm">Remove</button>
-      </form>
-    </div>
-    <div class="danger-item">
-      <div><b>Back up the data</b><p class="muted small">Download any table as CSV (Excel) from the Database tab, or copy the file <code>taskflow.db</code>.</p></div>
-      <a class="btn btn-light sm" href="{{ url_for('admin_panel', tab='data', table='tasks') }}">Open database</a>
+      <div><b>Back up all data</b><p class="muted small">One compressed JSON file with every table (passwords stay hashed). Single tables can be downloaded as CSV in the Database tab.</p></div>
+      <a class="btn btn-light sm" href="{{ url_for('admin_backup') }}"><svg class="i"><use href="#i-download"/></svg> Download backup</a>
     </div>
     <div class="danger-item red">
-      <div><b class="red">Reset everything to demo data</b><p class="muted small">Deletes ALL users, projects, tasks and comments and loads the demo team again. You will be signed out.</p></div>
+      <div><b class="red">Reset everything to demo data</b><p class="muted small">Deletes ALL workspaces, users, tasks, files, time entries and resumes and loads the demo data again. You will be signed out.</p></div>
       <form method="post" action="{{ url_for('admin_maintenance') }}" data-confirm="This deletes all data. Are you sure?">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="reset_demo">
         <input name="confirm" placeholder="Type RESET" required autocomplete="off">

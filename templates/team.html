@@ -3,18 +3,29 @@
 {% block title %}Team{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Team</h1><p class="muted">{{ people|selectattr('active')|list|length }} active members</p></div>
-  {% if user.role == 'admin' %}<button class="btn btn-primary" data-open="addUser"><svg class="i"><use href="#i-plus"/></svg> Add member</button>{% endif %}
+  <div><h1>Team</h1><p class="muted"><span translate="no">{{ workspace.name }}</span> · {{ 'Active members:'|tr }} {{ people|selectattr('active')|list|length }}</p></div>
+  <div class="actions">
+    {% if user.role == 'admin' %}<button class="btn btn-primary" data-open="addUser"><svg class="i"><use href="#i-plus"/></svg> Add member</button>{% endif %}
+  </div>
 </div>
+
+{% if user.role == 'admin' %}
+<section class="card invite-card">
+  <div><b><svg class="i"><use href="#i-link"/></svg> Invite link</b>
+    <p class="muted small">Send this link to a teammate. They create an account (or sign in) and join this workspace as a member.</p></div>
+  <div class="copy-row"><input readonly value="{{ invite_link }}" id="inviteLink" translate="no"><button class="btn btn-light sm" data-copy="#inviteLink"><svg class="i"><use href="#i-copy"/></svg> Copy</button>
+    <a class="btn btn-ghost sm" href="{{ url_for('workspace_settings') }}#invite">New link</a></div>
+</section>
+{% endif %}
 
 <div class="people">
   {% for p in people %}
   <section class="card person {{ 'inactive' if not p.active }}">
     <div class="person-top">
       {{ m.avatar(p.name, p.color, 'lg') }}
-      <div><h3>{{ p.name }}{% if p.id == user.id %} <small class="muted">(you)</small>{% endif %}{% if p.role == 'admin' %} <span class="badge badge-admin">Admin</span>{% endif %}{% if not p.active %} <span class="badge">Inactive</span>{% endif %}</h3>
-        <p class="muted">{{ p.job_title or '—' }}</p>
-        <a class="muted small" href="mailto:{{ p.email }}">{{ p.email }}</a></div>
+      <div><h3><span translate="no">{{ p.name }}</span>{% if p.id == user.id %} <small class="muted">(you)</small>{% endif %}{% if p.role == 'admin' %} <span class="badge badge-admin">Admin</span>{% endif %}{% if not p.active %} <span class="badge">Inactive</span>{% endif %}</h3>
+        <p class="muted" translate="no">{{ p.job_title or '—' }}</p>
+        <a class="muted small" href="mailto:{{ p.email }}" translate="no">{{ p.email }}</a></div>
     </div>
     <div class="person-stats">
       <a href="{{ url_for('task_list', assignee=p.id) }}"><b>{{ p.assigned }}</b><small>Assigned</small></a>
@@ -22,10 +33,22 @@
       <a href="{{ url_for('task_list', assignee=p.id, due='overdue') }}" class="{{ 'red' if p.overdue }}"><b>{{ p.overdue }}</b><small>Overdue</small></a>
     </div>
     <div class="progress"><i style="width:{{ p.done_pct }}%"></i></div>
-    <small class="muted">{{ p.done_pct }}% completed</small>
+    <small class="muted">{{ 'Completed:'|tr }} {{ p.done_pct }}%</small>
     {% if user.role == 'admin' and p.id != user.id %}
     <details class="admin-tools">
       <summary>Manage</summary>
+      <form method="post" action="{{ url_for('team_action', user_id=p.id, action='role') }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <select name="role"><option value="member" {{ 'selected' if p.role == 'member' }}>Member</option><option value="admin" {{ 'selected' if p.role == 'admin' }}>Admin</option></select>
+        <button class="btn btn-light sm">Save role</button>
+      </form>
+      <form method="post" action="{{ url_for('team_action', user_id=p.id, action='remove') }}"
+            data-confirm="Remove this person from the workspace? Their tasks here become unassigned. Their account stays.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-danger-ghost sm">Remove from workspace</button>
+      </form>
+      {% if user.site_admin %}
+      <div class="site-tools"><small class="muted">Site administrator</small>
       <form method="post" action="{{ url_for('team_action', user_id=p.id, action='edit') }}" class="edit-user">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input name="name" value="{{ p.name }}" required placeholder="Full name">
@@ -34,45 +57,66 @@
         <div class="swatches sm">{% for c in COLORS %}<label><input type="radio" name="color" value="{{ c }}" {{ 'checked' if c == p.color }}><i style="background:{{ c }}"></i></label>{% endfor %}</div>
         <button class="btn btn-light sm">Save details</button>
       </form>
-      <form method="post" action="{{ url_for('team_action', user_id=p.id, action='role') }}" class="inline">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <select name="role">{% for r in ['member', 'admin'] %}<option value="{{ r }}" {{ 'selected' if p.role == r }}>{{ r|capitalize }}</option>{% endfor %}</select>
-        <button class="btn btn-light sm">Save role</button>
-      </form>
       <form method="post" action="{{ url_for('team_action', user_id=p.id, action='reset') }}" class="inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="text" name="password" placeholder="New password (8+)" minlength="8" required>
-        <button class="btn btn-light sm">Reset</button>
+        <input type="text" name="password" placeholder="New password (8+)" minlength="8" required autocomplete="off">
+        <button class="btn btn-light sm">Reset password</button>
+      </form>
+      <form method="post" action="{{ url_for('team_action', user_id=p.id, action='reset2fa') }}" data-confirm="Switch off two-factor login for this person?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn btn-light sm"><svg class="i"><use href="#i-shield"/></svg> Reset two-factor login</button>
       </form>
       <form method="post" action="{{ url_for('team_action', user_id=p.id, action='toggle') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button class="btn {{ 'btn-danger-ghost' if p.active else 'btn-light' }} sm">{{ 'Deactivate account' if p.active else 'Activate account' }}</button>
       </form>
       <form method="post" action="{{ url_for('team_action', user_id=p.id, action='delete') }}"
-            data-confirm="Delete {{ p.name }}'s account? Their tasks will become unassigned and their comments will be removed.">
+            data-confirm="Delete this account everywhere? Their tasks become unassigned and their comments are removed.">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button class="btn btn-danger sm">Delete account</button>
       </form>
+      </div>
+      {% endif %}
     </details>
     {% elif p.id == user.id %}
-    <a class="small" href="{{ url_for('profile') }}">Edit my details and password →</a>
+    <div class="row-between"><a class="small" href="{{ url_for('profile') }}">Edit my details and password →</a>
+    {% if my_workspaces|length > 1 %}
+    <form method="post" action="{{ url_for('workspace_leave') }}" data-confirm="Leave this workspace? Your tasks here become unassigned.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="link small red">Leave workspace</button></form>{% endif %}</div>
     {% endif %}
   </section>
   {% endfor %}
 </div>
+
+<section class="card" id="workload">
+  <div class="card-head"><h2>Workload</h2><span class="muted small">Open tasks and estimated hours still to do</span></div>
+  {% set peak = (workload|map(attribute='open_tasks')|max) if workload else 1 %}
+  <table class="table workload">
+    <thead><tr><th>Member</th><th>Open tasks</th><th style="width:40%"></th><th>Estimated hours left</th></tr></thead>
+    <tbody>
+    {% for w in workload %}
+      <tr><td><span class="who">{{ m.avatar(w.name, w.color, 'xs') }}<span translate="no">{{ w.name }}</span></span></td>
+        <td><a href="{{ url_for('task_list', assignee=w.id, status='open') }}"><b>{{ w.open_tasks }}</b></a></td>
+        <td><div class="progress"><i style="width:{{ (w.open_tasks / (peak or 1) * 100)|round }}%;background:{{ w.color }}"></i></div></td>
+        <td>{{ w.open_minutes|hours if w.open_minutes else '—' }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
 
 {% if user.role == 'admin' %}
 <dialog id="addUser" class="dialog">
   <form method="post" action="{{ url_for('team_add') }}" class="form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <h2>Add team member</h2>
+    <p class="muted small">If the person already has a TaskFlow account, they are simply added to this workspace (name and password are not changed).</p>
     <label>Full name<input name="name" required></label>
     <label>Email<input type="email" name="email" required></label>
     <div class="row2">
       <label>Job title<input name="job_title"></label>
       <label>Role<select name="role"><option value="member">Member</option><option value="admin">Admin</option></select></label>
     </div>
-    <label>Temporary password<input type="text" name="password" minlength="8" required></label>
+    <label>Temporary password<input type="text" name="password" minlength="8" autocomplete="off" placeholder="Only for a new account"></label>
     <div class="form-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary">Add member</button></div>
   </form>
 </dialog>

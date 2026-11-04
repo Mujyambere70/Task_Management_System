@@ -1,0 +1,139 @@
+Welcome back, {0}!	С возвращением, {0}!	Bon retour, {0} !	¡Bienvenido de nuevo, {0}!	مرحبًا بعودتك، {0}!	欢迎回来，{0}！	Murakaza neza nanone, {0}!
+Good morning, {0}!	Доброе утро, {0}!	Bonjour, {0} !	¡Buenos días, {0}!	صباح الخير، {0}!	早上好，{0}！	Mwaramutse, {0}!
+Good afternoon, {0}!	Добрый день, {0}!	Bon après-midi, {0} !	¡Buenas tardes, {0}!	مساء الخير، {0}!	下午好，{0}！	Mwiriwe, {0}!
+Good evening, {0}!	Добрый вечер, {0}!	Bonsoir, {0} !	¡Buenas noches, {0}!	مساء الخير، {0}!	晚上好，{0}！	Muramuke, {0}!
+Workspace	Рабочее пространство	Espace de travail	Espacio de trabajo	مساحة العمل	工作区	Aho gukorera
+Open tasks	Открытые задачи	Tâches ouvertes	Tareas abiertas	المهام المفتوحة	未完成任务	Imirimo itararangira
+Overdue	Просрочено	En retard	Atrasadas	متأخرة	已逾期	Byarengeje igihe
+Due today	Срок сегодня	Échéance aujourd’hui	Vencen hoy	مستحقة اليوم	今天到期	Bigomba kurangira uyu munsi
+Today	Сегодня	Aujourd’hui	Hoy	اليوم	今天	Uyu munsi
+Tomorrow	Завтра	Demain	Mañana	غدًا	明天	Ejo
+Yesterday	Вчера	Hier	Ayer	أمس	昨天	Ejo hashize
+just now	только что	à l’instant	justo ahora	الآن	刚刚	ubu nyine
+{0} min ago	{0} мин назад	il y a {0} min	hace {0} min	قبل {0} دقيقة	{0} 分钟前	hashize iminota {0}
+{0} h ago	{0} ч назад	il y a {0} h	hace {0} h	قبل {0} ساعة	{0} 小时前	hashize amasaha {0}
+{0} d ago	{0} дн. назад	il y a {0} j	hace {0} d	قبل {0} يوم	{0} 天前	hashize iminsi {0}
+Workspace admin	Администратор пространства	Admin de l’espace	Admin del espacio	مدير مساحة العمل	工作区管理员	Umuyobozi w’aho bakorera
+Member	Участник	Membre	Miembro	عضو	成员	Umunyamuryango
+Admin	Администратор	Admin	Admin	مدير	管理员	Umuyobozi
+member	участник	membre	miembro	عضو	成员	umunyamuryango
+admin	администратор	admin	admin	مدير	管理员	umuyobozi
+Your workspaces	Ваши рабочие пространства	Vos espaces de travail	Tus espacios de trabajo	مساحات عملك	你的工作区	Aho ukorera hose
+New workspace	Новое пространство	Nouvel espace	Nuevo espacio	مساحة عمل جديدة	新建工作区	Aho gukorera hashya
+Workspace settings	Настройки пространства	Paramètres de l’espace	Ajustes del espacio	إعدادات مساحة العمل	工作区设置	Igenamiterere ry’aho bakorera
+New task	Новая задача	Nouvelle tâche	Nueva tarea	مهمة جديدة	新建任务	Umurimo mushya
+Dashboard	Главная	Tableau de bord	Panel	لوحة التحكم	仪表板	Ahabanza
+My tasks	Мои задачи	Mes tâches	Mis tareas	مهامي	我的任务	Imirimo yanjye
+Created by me	Созданные мной	Créées par moi	Creadas por mí	أنشأتها أنا	我创建的	Nakoze njyewe
+Board	Доска	Tableau	Tablero	اللوحة	看板	Ikibaho
+All tasks	Все задачи	Toutes les tâches	Todas las tareas	كل المهام	全部任务	Imirimo yose
+Calendar	Календарь	Calendrier	Calendario	التقويم	日历	Kalendari
+Reports	Отчёты	Rapports	Informes	التقارير	报表	Raporo
+Team	Команда	Équipe	Equipo	الفريق	团队	Itsinda
+Site admin	Админ сайта	Admin du site	Admin del sitio	إدارة الموقع	网站管理	Ubuyobozi bw’urubuga
+Projects	Проекты	Projets	Proyectos	المشاريع	项目	Imishinga
+View all	Все	Tout voir	Ver todo	عرض الكل	查看全部	Reba byose
+No projects yet	Пока нет проектов	Pas encore de projets	Aún no hay proyectos	لا توجد مشاريع بعد	暂无项目	Nta mushinga urahari
+Resumes	Резюме	CV	Currículums	السير الذاتية	简历	CV
+My resumes	Мои резюме	Mes CV	Mis currículums	سيري الذاتية	我的简历	CV zanjye
+Sign out	Выйти	Se déconnecter	Cerrar sesión	تسجيل الخروج	退出	Sohoka
+Menu	Меню	Menu	Menú	القائمة	菜单	Ibikubiyemo
+Search tasks…	Поиск задач…	Rechercher des tâches…	Buscar tareas…	ابحث في المهام…	搜索任务…	Shakisha imirimo…
+Live updates	Обновления в реальном времени	Mises à jour en direct	Actualizaciones en vivo	تحديثات مباشرة	实时更新	Amakuru ako kanya
+Notifications	Уведомления	Notifications	Notificaciones	الإشعارات	通知	Imenyesha
+Close	Закрыть	Fermer	Cerrar	إغلاق	关闭	Funga
+Stop	Стоп	Arrêter	Detener	إيقاف	停止	Hagarika
+Stop the timer	Остановить таймер	Arrêter le chronomètre	Detener el temporizador	أوقف المؤقت	停止计时	Hagarika isaha
+My open tasks	Мои открытые задачи	Mes tâches ouvertes	Mis tareas abiertas	مهامي المفتوحة	我的未完成任务	Imirimo yanjye itararangira
+{0} in progress	{0} в работе	{0} en cours	{0} en curso	{0} قيد التنفيذ	{0} 个进行中	{0} birimo gukorwa
+Team overdue	Просрочено в команде	Retards de l’équipe	Atrasos del equipo	متأخرات الفريق	团队逾期	Iby’itsinda byarengeje igihe
+need attention	требуют внимания	à traiter	requieren atención	تحتاج إلى متابعة	需要关注	bikeneye kwitabwaho
+across all projects	во всех проектах	dans tous les projets	en todos los proyectos	في كل المشاريع	所有项目	mu mishinga yose
+Team completion	Выполнение командой	Avancement de l’équipe	Avance del equipo	إنجاز الفريق	团队完成率	Ibyo itsinda ryarangije
+{0} of {1} tasks done	Выполнено {0} из {1} задач	{0} tâches sur {1} terminées	{0} de {1} tareas hechas	أُنجزت {0} من {1} مهمة	已完成 {0}/{1} 个任务	Imirimo {0} kuri {1} yarangiye
+Upcoming	Предстоящие	À venir	Próximas	القادمة	即将到期	Ibiri imbere
+All clear!	Всё готово!	Tout est à jour !	¡Todo listo!	كل شيء على ما يرام!	全部完成！	Byose biri ku murongo!
+No upcoming tasks assigned to you.	Нет предстоящих задач, назначенных вам.	Aucune tâche à venir ne vous est assignée.	No tienes tareas próximas asignadas.	لا توجد مهام قادمة مسندة إليك.	没有分配给你的即将到期任务。	Nta murimo uri imbere wahawe.
+Mark as done	Отметить как выполненную	Marquer comme terminée	Marcar como hecha	وضع علامة منجزة	标记为完成	Shyiraho ko byarangiye
+Team activity	Активность команды	Activité de l’équipe	Actividad del equipo	نشاط الفريق	团队动态	Ibikorwa by’itsinda
+More	Ещё	Plus	Más	المزيد	更多	Ibindi
+Tasks by status	Задачи по статусам	Tâches par statut	Tareas por estado	المهام حسب الحالة	按状态统计任务	Imirimo ukurikije uko ihagaze
+tasks	задач	tâches	tareas	مهام	个任务	imirimo
+Completed · last 14 days	Выполнено · последние 14 дней	Terminées · 14 derniers jours	Completadas · últimos 14 días	المنجزة · آخر 14 يومًا	已完成 · 最近 14 天	Byarangiye · iminsi 14 ishize
+Manage	Управлять	Gérer	Gestionar	إدارة	管理	Genzura
+No projects yet.	Пока нет проектов.	Pas encore de projets.	Aún no hay proyectos.	لا توجد مشاريع بعد.	暂无项目。	Nta mushinga urahari.
+Create the first one	Создайте первый	Créez le premier	Crea el primero	أنشئ الأول	创建第一个	Kora uwa mbere
+To Do	К выполнению	À faire	Por hacer	للتنفيذ	待办	Ibyo gukora
+In Progress	В работе	En cours	En curso	قيد التنفيذ	进行中	Birimo gukorwa
+In Review	На проверке	En revue	En revisión	قيد المراجعة	审核中	Birimo gusuzumwa
+Done	Готово	Terminé	Hecho	منجزة	已完成	Byarangiye
+Low	Низкий	Basse	Baja	منخفضة	低	Hasi
+Medium	Средний	Moyenne	Media	متوسطة	中	Hagati
+High	Высокий	Haute	Alta	عالية	高	Hejuru
+Urgent	Срочно	Urgente	Urgente	عاجلة	紧急	Byihutirwa
+{0} → {1}	{0} → {1}	{0} → {1}	{0} → {1}	{0} → {1}	{0} → {1}	{0} → {1}
+({0} → {1})	({0} → {1})	({0} → {1})	({0} → {1})	({0} → {1})	（{0} → {1}）	({0} → {1})
+{0} joined as {1}	{0} — {1}	{0} a rejoint en tant que {1}	{0} se unió como {1}	انضم {0} بصفة {1}	{0} 以{1}身份加入	{0} yinjiye nka {1}
+{0} joined	{0} присоединился(-ась)	{0} a rejoint	{0} se unió	انضم {0}	{0} 已加入	{0} yinjiye
+{0} is now {1}	{0} теперь {1}	{0} est maintenant {1}	{0} ahora es {1}	{0} أصبح {1}	{0} 现在是{1}	{0} ubu ni {1}
+Someone	Кто-то	Quelqu’un	Alguien	شخص ما	有人	Umuntu
+created	создал(а)	a créé	creó	أنشأ	创建了	yakoze
+updated	обновил(а)	a mis à jour	actualizó	حدّث	更新了	yavuguruye
+completed	завершил(а)	a terminé	completó	أنجز	完成了	yarangije
+moved	переместил(а)	a déplacé	movió	نقل	移动了	yimuye
+deleted task	удалил(а) задачу	a supprimé la tâche	eliminó la tarea	حذف المهمة	删除了任务	yasibye umurimo
+commented on	прокомментировал(а)	a commenté	comentó en	علّق على	评论了	yatanze igitekerezo kuri
+signed in	вошёл(вошла)	s’est connecté	inició sesión	سجّل الدخول	登录了	yinjiye
+added a team member	добавил(а) участника	a ajouté un membre	añadió a un miembro	أضاف عضوًا	添加了团队成员	yongeyemo umunyamuryango
+created project	создал(а) проект	a créé le projet	creó el proyecto	أنشأ المشروع	创建了项目	yakoze umushinga
+updated project	обновил(а) проект	a mis à jour le projet	actualizó el proyecto	حدّث المشروع	更新了项目	yavuguruye umushinga
+archived project	архивировал(а) проект	a archivé le projet	archivó el proyecto	أرشف المشروع	归档了项目	yabitse umushinga mu bubiko
+restored project	восстановил(а) проект	a restauré le projet	restauró el proyecto	استعاد المشروع	恢复了项目	yagaruye umushinga
+changed a role	изменил(а) роль	a changé un rôle	cambió un rol	غيّر دورًا	更改了角色	yahinduye inshingano
+deactivated	деактивировал(а)	a désactivé	desactivó	عطّل	停用了	yahagaritse
+activated	активировал(а)	a activé	activó	فعّل	启用了	yafunguye
+reset the password of	сбросил(а) пароль для	a réinitialisé le mot de passe de	restableció la contraseña de	أعاد تعيين كلمة مرور	重置了密码：	yahinduye ijambo ry’ibanga rya
+changed their password	сменил(а) пароль	a changé son mot de passe	cambió su contraseña	غيّر كلمة المرور	修改了密码	yahinduye ijambo rye ry’ibanga
+updated their profile	обновил(а) профиль	a mis à jour son profil	actualizó su perfil	حدّث ملفه الشخصي	更新了个人资料	yavuguruye umwirondoro we
+edited the details of	изменил(а) данные	a modifié les informations de	editó los datos de	عدّل بيانات	编辑了资料：	yahinduye amakuru ya
+deleted the account of	удалил(а) аккаунт	a supprimé le compte de	eliminó la cuenta de	حذف حساب	删除了账户：	yasibye konti ya
+changed workspace settings	изменил(а) настройки пространства	a modifié les paramètres de l’espace	cambió los ajustes del espacio	غيّر إعدادات مساحة العمل	修改了工作区设置	yahinduye igenamiterere
+cleared the activity log	очистил(а) журнал активности	a vidé le journal d’activité	borró el registro de actividad	مسح سجل النشاط	清空了动态日志	yasibye amateka y’ibikorwa
+cleaned up tasks	очистил(а) задачи	a nettoyé les tâches	limpió las tareas	نظّف المهام	清理了任务	yasukuye imirimo
+deleted project	удалил(а) проект	a supprimé le projet	eliminó el proyecto	حذف المشروع	删除了项目	yasibye umushinga
+deleted a comment on	удалил(а) комментарий к	a supprimé un commentaire sur	eliminó un comentario en	حذف تعليقًا على	删除了评论：	yasibye igitekerezo kuri
+bulk-updated tasks	массово изменил(а) задачи	a modifié des tâches en lot	actualizó tareas en bloque	حدّث مهام دفعة واحدة	批量更新了任务	yahinduye imirimo myinshi
+edited a comment on	изменил(а) комментарий к	a modifié un commentaire sur	editó un comentario en	عدّل تعليقًا على	编辑了评论：	yahinduye igitekerezo kuri
+added a checklist item to	добавил(а) пункт чек-листа в	a ajouté un élément de liste à	añadió un elemento de lista a	أضاف بندًا إلى قائمة	添加了清单项：	yongeyeho ingingo kuri
+ticked off an item in	отметил(а) пункт в	a coché un élément dans	marcó un elemento en	أنجز بندًا في	勾选了清单项：	yarangije ingingo muri
+removed a checklist item from	удалил(а) пункт чек-листа из	a retiré un élément de liste de	quitó un elemento de lista de	أزال بندًا من	删除了清单项：	yakuyeho ingingo kuri
+An account was closed:	Аккаунт закрыт:	Un compte a été fermé :	Se cerró una cuenta:	تم إغلاق حساب:	账户已注销：	Konti yafunzwe:
+attached a file to	прикрепил(а) файл к	a joint un fichier à	adjuntó un archivo a	أرفق ملفًا بـ	为以下任务添加了附件：	yometse idosiye kuri
+removed a file from	удалил(а) файл из	a retiré un fichier de	quitó un archivo de	أزال ملفًا من	删除了附件：	yakuyeho idosiye kuri
+logged time on	записал(а) время по	a saisi du temps sur	registró tiempo en	سجّل وقتًا على	记录了工时：	yanditse igihe kuri
+created the workspace	создал(а) рабочее пространство	a créé l’espace de travail	creó el espacio de trabajo	أنشأ مساحة العمل	创建了工作区	yafunguye aho gukorera
+made a new invite link	создал(а) новую ссылку-приглашение	a créé un nouveau lien d’invitation	creó un nuevo enlace de invitación	أنشأ رابط دعوة جديدًا	生成了新的邀请链接	yakoze umurongo mushya w’ubutumire
+removed a member:	удалил(а) участника:	a retiré un membre :	quitó a un miembro:	أزال عضوًا:	移除了成员：	yakuyemo umunyamuryango:
+left the workspace	покинул(а) пространство	a quitté l’espace de travail	dejó el espacio de trabajo	غادر مساحة العمل	离开了工作区	yavuye aho bakorera
+joined the workspace	присоединился(-ась) к пространству	a rejoint l’espace de travail	se unió al espacio de trabajo	انضم إلى مساحة العمل	加入了工作区	yinjiye aho bakorera
+created a resume	создал(а) резюме	a créé un CV	creó un currículum	أنشأ سيرة ذاتية	创建了简历	yakoze CV
+deleted a resume	удалил(а) резюме	a supprimé un CV	eliminó un currículum	حذف سيرة ذاتية	删除了简历	yasibye CV
+turned on two-factor login	включил(а) двухфакторный вход	a activé la connexion à deux facteurs	activó el inicio en dos pasos	فعّل تسجيل الدخول بخطوتين	开启了双重验证	yafunguye kwinjira mu ntambwe ebyiri
+turned off two-factor login	отключил(а) двухфакторный вход	a désactivé la connexion à deux facteurs	desactivó el inicio en dos pasos	أوقف تسجيل الدخول بخطوتين	关闭了双重验证	yafunze kwinjira mu ntambwe ebyiri
+reset two-factor login of a member	сбросил(а) двухфакторный вход участника	a réinitialisé la connexion à deux facteurs d’un membre	restableció el inicio en dos pasos de un miembro	أعاد تعيين تسجيل الدخول بخطوتين لعضو	重置了成员的双重验证	yasubiyemo kwinjira mu ntambwe ebyiri k’umunyamuryango
+reset their password by email	сбросил(а) пароль по почте	a réinitialisé son mot de passe par e-mail	restableció su contraseña por correo	أعاد تعيين كلمة المرور عبر البريد	通过邮件重置了密码	yahinduye ijambo ry’ibanga akoresheje imeli
+deleted a workspace	удалил(а) рабочее пространство	a supprimé un espace de travail	eliminó un espacio de trabajo	حذف مساحة عمل	删除了工作区	yasibye aho gukorera
+Team board	Доска команды	Tableau de l’équipe	Tablero del equipo	لوحة الفريق	团队看板	Ikibaho cy’itsinda
+Drag cards between columns to change their status. Changes of your teammates appear here live.	Перетаскивайте карточки между колонками, чтобы менять статус. Изменения коллег появляются здесь сразу.	Faites glisser les cartes entre les colonnes pour changer leur statut. Les changements de vos coéquipiers apparaissent ici en direct.	Arrastra las tarjetas entre columnas para cambiar su estado. Los cambios de tus compañeros aparecen aquí en vivo.	اسحب البطاقات بين الأعمدة لتغيير حالتها. تظهر تغييرات زملائك هنا مباشرة.	在列之间拖动卡片以更改状态。队友的修改会实时显示在这里。	Kurura amakarita hagati y’inkingi uhindure uko ahagaze. Impinduka z’abo mukorana zigaragara hano ako kanya.
+Filter cards…	Фильтр карточек…	Filtrer les cartes…	Filtrar tarjetas…	تصفية البطاقات…	筛选卡片…	Shungura amakarita…
+All projects	Все проекты	Tous les projets	Todos los proyectos	كل المشاريع	全部项目	Imishinga yose
+Everyone	Все	Tout le monde	Todos	الجميع	所有人	Bose
+Only my tasks	Только мои задачи	Seulement mes tâches	Solo mis tareas	مهامي فقط	仅我的任务	Imirimo yanjye gusa
+Any priority	Любой приоритет	Toute priorité	Cualquier prioridad	أي أولوية	任意优先级	Icyihutirwa icyo ari cyo cyose
+Clear	Сбросить	Effacer	Limpiar	مسح	清除	Siba
+Add task	Добавить задачу	Ajouter une tâche	Añadir tarea	إضافة مهمة	添加任务	Ongeraho umurimo
+Drop tasks here	Перетащите задачи сюда	Déposez les tâches ici	Suelta las tareas aquí	أفلت المهام هنا	把任务拖到这里	Shyira imirimo hano
+Files	Файлы	Fichiers	Archivos	الملفات	附件	Amadosiye
+Checklist	Чек-лист	Liste de contrôle	Lista de control	قائمة التحقق	清单	Urutonde rw’ibyo gukora
+Time logged	Записанное время	Temps saisi	Tiempo registrado	الوقت المسجّل	已记录工时	Igihe cyanditswe
+Estimate	Оценка	Estimation	Estimación	التقدير	预估	Igereranya

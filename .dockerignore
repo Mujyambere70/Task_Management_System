@@ -1,0 +1,11 @@
+.git
+.venv
+__pycache__
+*.pyc
+*.db
+*.db-*
+tests
+tools/strings_en.json
+screenshots
+console_version/*.txt
+.env

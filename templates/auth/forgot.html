@@ -1,0 +1,12 @@
+{% extends "auth/_auth_base.html" %}
+{% block title %}Forgot password{% endblock %}
+{% block form %}
+<h2>Forgot your password?</h2>
+<p class="muted">Type the email of your account. We will send you a link to choose a new password.</p>
+<form method="post" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Email<input type="email" name="email" required autofocus autocomplete="username"></label>
+  <button class="btn btn-primary btn-block btn-lg">Send the link</button>
+</form>
+<p class="switch"><a href="{{ url_for('login') }}">Back to sign in</a></p>
+{% endblock %}

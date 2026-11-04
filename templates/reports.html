@@ -3,10 +3,11 @@
 {% block title %}Reports{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Reports</h1><p class="muted">Live numbers for the whole team · {{ today.strftime('%d %B %Y') }}</p></div>
+  <div><h1>Reports</h1><p class="muted"><span translate="no">{{ workspace.name }}</span> · {{ fmt_date(today, 'long') }}</p></div>
   <div class="actions">
     <button class="btn btn-light" onclick="window.print()">Print</button>
-    <a class="btn btn-primary" href="{{ url_for('export_csv') }}"><svg class="i"><use href="#i-download"/></svg> Download CSV</a>
+    <a class="btn btn-light" href="{{ url_for('export_time_csv') }}"><svg class="i"><use href="#i-download"/></svg> Time CSV</a>
+    <a class="btn btn-primary" href="{{ url_for('export_csv') }}"><svg class="i"><use href="#i-download"/></svg> Tasks CSV</a>
   </div>
 </div>
 
@@ -25,7 +26,7 @@
     {% set peak = chart|map(attribute=1)|max or 1 %}
     <div class="bars tall">
       {% for d, n in chart %}
-      <div class="bar" title="{{ d.strftime('%d %b') }}: {{ n }}"><em>{{ n if n }}</em><i style="height:{{ (n / peak * 100)|round }}%"></i><span>{{ d.strftime('%d') if loop.index is odd else '' }}</span></div>
+      <div class="bar" title="{{ fmt_date(d, 'd MMM') }}: {{ n }}"><em>{{ n if n }}</em><i style="height:{{ (n / peak * 100)|round }}%"></i><span>{{ d.strftime('%d') if loop.index is odd else '' }}</span></div>
       {% endfor %}
     </div>
   </section>
@@ -37,8 +38,62 @@
     {% endfor %}
     <h2 class="mt">Projects</h2>
     {% for p in projects %}
-    <div class="hbar"><span><i class="dot" style="background:{{ p.color }}"></i>{{ p.name }}</span><div><i style="width:{{ p.progress }}%;background:{{ p.color }}"></i></div><b>{{ p.progress }}%</b></div>
+    <div class="hbar"><span><i class="dot" style="background:{{ p.color }}"></i><span translate="no">{{ p.name }}</span></span><div><i style="width:{{ p.progress }}%;background:{{ p.color }}"></i></div><b>{{ p.progress }}%</b></div>
     {% endfor %}
+  </section>
+</div>
+
+
+<h2 class="section-title" id="burndown">Burndown chart</h2>
+<section class="card">
+  <form class="filters compact" method="get" action="{{ url_for('reports') }}#burndown">
+    <select name="project" onchange="this.form.submit()">
+      <option value="">All projects</option>
+      {% for p in projects %}<option value="{{ p.id }}" {{ 'selected' if project == p.id }}>{{ p.name }}</option>{% endfor %}
+    </select>
+    <select name="metric" onchange="this.form.submit()">
+      <option value="tasks" {{ 'selected' if metric == 'tasks' }}>Count tasks</option>
+      <option value="hours" {{ 'selected' if metric == 'hours' }}>Count estimated hours</option>
+    </select>
+    <select name="days" onchange="this.form.submit()">
+      {% for d in [14, 30, 60] %}<option value="{{ d }}" {{ 'selected' if days == d }}>{{ 'Last {0} days'|tr|replace('{0}', d) }}</option>{% endfor %}
+    </select>
+    <noscript><button class="btn btn-dark sm">Show</button></noscript>
+  </form>
+  <div class="bd-head">
+    <div><small class="muted">{{ 'Still to do' if metric == 'tasks' else 'Estimated hours still to do' }}</small><b>{{ bd.remaining }}</b></div>
+    <ul class="legend inline"><li><i class="lg-remaining"></i>Remaining work</li><li><i class="lg-ideal"></i>Ideal line</li><li><i class="lg-scope"></i>All work (scope)</li></ul>
+  </div>
+  <svg class="burndown" viewBox="0 0 {{ svg.w }} {{ svg.h }}" role="img" aria-label="Burndown chart">
+    {% for y, v in svg.ticks %}<line x1="{{ svg.pad }}" x2="{{ svg.w - 10 }}" y1="{{ y }}" y2="{{ y }}" class="grid"/><text x="{{ svg.pad - 6 }}" y="{{ y + 4 }}" class="ytick">{{ v }}</text>{% endfor %}
+    {% for x, d in svg.labels %}<text x="{{ x }}" y="{{ svg.h - svg.pad + 18 }}" class="xtick">{{ fmt_date(d, 'd MMM') }}</text>{% endfor %}
+    <line x1="{{ svg.today_x }}" x2="{{ svg.today_x }}" y1="10" y2="{{ svg.h - svg.pad }}" class="today-line"/>
+    <polyline points="{{ svg.scope }}" class="l-scope"/>
+    <polyline points="{{ svg.ideal }}" class="l-ideal"/>
+    <polyline points="{{ svg.remaining }}" class="l-remaining"/>
+  </svg>
+  <p class="muted small">The blue line shows the open work on each day. When it is under the dashed ideal line, the team is ahead of plan. The grey line rises when new work is added.{% if metric == 'hours' %} <span>Only tasks with an estimate count in hours mode.</span>{% endif %}</p>
+</section>
+
+<h2 class="section-title" id="time">Time tracking · last 30 days</h2>
+<div class="kpis">
+  <div class="kpi"><div><small>Time logged</small><b>{{ time.total|hours if time.total else '0' }}</b><em>{{ 'by {0} people'|tr|replace('{0}', time.people|length) }}</em></div></div>
+  <div class="kpi"><div><small>Estimated (all tasks)</small><b>{{ time.estimated|hours if time.estimated else '—' }}</b></div></div>
+  <div class="kpi"><div><small>Logged on estimated tasks</small><b>{{ time.logged_on_estimated|hours if time.logged_on_estimated else '—' }}</b>
+    {% if time.estimated %}<em>{{ (time.logged_on_estimated / time.estimated * 100)|round|int }}%</em>{% endif %}</div></div>
+</div>
+<div class="grid-2">
+  <section class="card">
+    <div class="card-head"><h2>By person</h2></div>
+    {% for p in time.people %}
+    <div class="hbar"><span class="who">{{ m.avatar(p.name, p.color, 'xs') }}<span translate="no">{{ p.name }}</span></span><div><i style="width:{{ p.share }}%;background:{{ p.color }}"></i></div><b>{{ p.minutes|hours }}</b></div>
+    {% else %}<div class="empty small">No time logged yet. Use the timer on a task.</div>{% endfor %}
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>By project</h2></div>
+    {% for p in time.projects %}
+    <div class="hbar"><span><i class="dot" style="background:{{ p.color }}"></i><span translate="no">{{ p.name }}</span>{% if not p.name %}No project{% endif %}</span><div><i style="width:{{ p.share }}%;background:{{ p.color }}"></i></div><b>{{ p.minutes|hours }}</b></div>
+    {% else %}<div class="empty small">No time logged yet.</div>{% endfor %}
   </section>
 </div>
 
@@ -48,7 +103,7 @@
     <thead><tr><th>Person</th><th>Assigned</th><th>Share of all tasks</th><th>Completed</th><th>Incomplete</th><th>Overdue</th></tr></thead>
     <tbody>
     {% for p in people %}
-      <tr><td><span class="who">{{ m.avatar(p.name, p.color, 'sm') }}<span><b>{{ p.name }}</b><br><small class="muted">{{ p.job_title }}</small></span></span></td>
+      <tr><td><span class="who">{{ m.avatar(p.name, p.color, 'sm') }}<span><b translate="no">{{ p.name }}</b><br><small class="muted" translate="no">{{ p.job_title }}</small></span></span></td>
         <td><b>{{ p.assigned }}</b></td><td>{{ p.share }}%</td>
         <td><div class="mini"><div class="progress"><i style="width:{{ p.done_pct }}%"></i></div>{{ p.done_pct }}%</div></td>
         <td>{{ p.open_pct }}%</td>
@@ -61,7 +116,7 @@
 <h2 class="section-title" id="activity">Activity log</h2>
 <section class="card">
   <ul class="feed">
-    {% for a in activity %}<li>{{ m.avatar(a.name, a.color, 'sm') }}<div>{{ m.activity_text(a) }}<small>{{ a.created_at }}</small></div></li>{% endfor %}
+    {% for a in activity %}<li>{{ m.avatar(a.name, a.color, 'sm') }}<div>{{ m.activity_text(a) }}<small>{{ a.created_at|when }}</small></div></li>{% endfor %}
   </ul>
 </section>
 {% endblock %}

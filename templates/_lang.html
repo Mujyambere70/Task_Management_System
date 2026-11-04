@@ -1,0 +1,8 @@
+<details class="lang-pick">
+  <summary title="Language"><svg class="i"><use href="#i-globe"/></svg><span translate="no">{{ lang|upper }}</span></summary>
+  <div class="lang-menu" translate="no">
+    {% for code, name in LANGUAGES.items() %}
+    <a href="{{ url_for('set_language', code=code, next=request.full_path if request.query_string else request.path) }}" class="{{ 'on' if code == lang }}" lang="{{ code }}">{{ name }}</a>
+    {% endfor %}
+  </div>
+</details>

@@ -1,0 +1,78 @@
+{# The resume itself. Needs: r, c, main, side, heading, when, photo, rt, font, rtl #}
+{% macro link_text(u) -%}{{ u.replace('https://', '').replace('http://', '').replace('mailto:', '').replace('www.', '').rstrip('/') }}{%- endmacro %}
+{% macro bullets(text) -%}
+{% if text %}<ul class="cv-bullets">{% for line in text.split('\n') if line.strip() %}<li>{{ line.lstrip('•-–* ') }}</li>{% endfor %}</ul>{% endif %}
+{%- endmacro %}
+{% macro dots(n) -%}<span class="cv-dots" aria-label="{{ n }}/5">{% for i in range(5) %}<i class="{{ 'on' if i < n }}"></i>{% endfor %}</span>{%- endmacro %}
+
+{% macro section(s) %}
+<section class="cv-sec cv-{{ s.type }}">
+  <h2>{{ heading(s) }}</h2>
+  {% if s.type == 'text' %}
+    {% for p in s.body.split('\n') if p.strip() %}<p class="cv-text">{{ p }}</p>{% endfor %}
+  {% elif s.type == 'skills' %}
+    {% for it in s['items'] %}<div class="cv-skill">{% if it.group %}<b>{{ it.group }}</b>{% endif %}
+      <div class="cv-chips">{% for x in it['items'].split(',') if x.strip() %}<span>{{ x.strip() }}</span>{% endfor %}</div></div>{% endfor %}
+  {% elif s.type == 'interests' %}
+    <div class="cv-chips">{% for it in s['items'] %}<span>{{ it.name }}</span>{% endfor %}</div>
+  {% elif s.type == 'languages' %}
+    {% for it in s['items'] %}<div class="cv-lang"><span><b>{{ it.name }}</b>{% if it.level %}<small>{{ rt(it.level) }}</small>{% endif %}</span>{% if it.score %}{{ dots(it.score) }}{% endif %}</div>{% endfor %}
+  {% else %}
+    {% for it in s['items'] %}
+    <div class="cv-item">
+      {% if s.type == 'experience' %}
+        <div class="cv-row"><h3>{{ it.role }}{% if it.role and it.org %} · {% endif %}<span class="cv-org">{{ it.org }}</span></h3><span class="cv-date">{{ when(it.start, it.end) }}</span></div>
+        {% if it.place or it.link %}<div class="cv-sub">{{ it.place }}{% if it.link %} <a href="{{ it.link }}" target="_blank" rel="noopener">{{ link_text(it.link) }}</a>{% endif %}</div>{% endif %}
+        {{ bullets(it.bullets) }}
+      {% elif s.type == 'education' %}
+        <div class="cv-row"><h3>{{ it.degree }}</h3><span class="cv-date">{{ when(it.start, it.end) }}</span></div>
+        <div class="cv-sub"><span class="cv-org">{{ it.school }}</span>{% if it.place %} · {{ it.place }}{% endif %}</div>
+        {{ bullets(it.bullets) }}
+      {% elif s.type == 'projects' %}
+        <div class="cv-row"><h3>{% if it.link %}<a href="{{ it.link }}" target="_blank" rel="noopener">{{ it.name }}</a>{% else %}{{ it.name }}{% endif %}</h3><span class="cv-date">{{ when(it.start, it.end) }}</span></div>
+        {% if it.tech or it.link %}<div class="cv-sub">{% if it.tech %}<i>{{ it.tech }}</i>{% endif %}{% if it.link %} <a class="cv-url" href="{{ it.link }}" target="_blank" rel="noopener">{{ link_text(it.link) }}</a>{% endif %}</div>{% endif %}
+        {{ bullets(it.bullets) }}
+      {% elif s.type == 'certifications' %}
+        <div class="cv-row"><h3>{% if it.link %}<a href="{{ it.link }}" target="_blank" rel="noopener">{{ it.name }}</a>{% else %}{{ it.name }}{% endif %}</h3><span class="cv-date">{{ it.date }}</span></div>
+        {% if it.issuer %}<div class="cv-sub">{{ it.issuer }}</div>{% endif %}
+      {% elif s.type == 'awards' %}
+        <div class="cv-row"><h3>{{ it.name }}</h3><span class="cv-date">{{ it.date }}</span></div>
+        {{ bullets(it.bullets) }}
+      {% elif s.type == 'references' %}
+        <div class="cv-row"><h3>{{ it.name }}</h3></div>
+        <div class="cv-sub">{{ it.role }}{% if it.role and it.contact %} · {% endif %}{{ it.contact }}</div>
+      {% else %}
+        <div class="cv-row"><h3>{% if it.link %}<a href="{{ it.link }}" target="_blank" rel="noopener">{{ it.title }}</a>{% else %}{{ it.title }}{% endif %}</h3><span class="cv-date">{{ it.date }}</span></div>
+        {% if it.subtitle %}<div class="cv-sub">{{ it.subtitle }}</div>{% endif %}
+        {{ bullets(it.bullets) }}
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% endif %}
+</section>
+{% endmacro %}
+
+<article class="cv theme-{{ r.theme }}" translate="no" lang="{{ r.lang }}" dir="{{ 'rtl' if rtl else 'ltr' }}" style="--accent: {{ r.accent }}; --cv-font: {{ font }}">
+  <header class="cv-head">
+    {% if photo %}<img class="cv-photo" src="{{ photo }}" alt="{{ c.name }}">{% endif %}
+    <div class="cv-id">
+      <h1>{{ c.name }}</h1>
+      {% if c.headline %}<p class="cv-headline">{{ c.headline }}</p>{% endif %}
+      <ul class="cv-contacts">
+        {% if c.email %}<li><svg class="i"><use href="#i-mail"/></svg><a href="mailto:{{ c.email }}">{{ c.email }}</a></li>{% endif %}
+        {% if c.phone %}<li><svg class="i"><use href="#i-phone"/></svg><a href="tel:{{ c.phone|replace(' ', '') }}">{{ c.phone }}</a></li>{% endif %}
+        {% if c.location %}<li><svg class="i"><use href="#i-pin"/></svg>{{ c.location }}</li>{% endif %}
+        {% if c.website %}<li><svg class="i"><use href="#i-globe"/></svg><a href="{{ c.website }}" target="_blank" rel="noopener">{{ link_text(c.website) }}</a></li>{% endif %}
+        {% for l in c.links %}<li><svg class="i"><use href="#i-link"/></svg><a href="{{ l.url }}" target="_blank" rel="noopener" title="{{ l.url }}">{{ l.label or link_text(l.url) }}{% if l.label %}<small> {{ link_text(l.url) }}</small>{% endif %}</a></li>{% endfor %}
+      </ul>
+    </div>
+  </header>
+  <div class="cv-body">
+    {% if side %}<aside class="cv-side">{% for s in side %}{{ section(s) }}{% endfor %}</aside>{% endif %}
+    <div class="cv-main">
+      {% if c.summary %}<section class="cv-sec cv-summary"><h2>{{ rt('Profile') }}</h2>{% for p in c.summary.split('\n') if p.strip() %}<p>{{ p }}</p>{% endfor %}</section>{% endif %}
+      {% for s in main %}{{ section(s) }}{% endfor %}
+      {% if not main and not side and not c.summary %}<p class="cv-empty">{{ rt('This resume is still empty.') }}</p>{% endif %}
+    </div>
+  </div>
+</article>

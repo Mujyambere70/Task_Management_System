@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Workspaces{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Workspaces</h1><p class="muted">Every team has its own workspace with its own projects, tasks, members and reports. You can belong to several.</p></div>
+</div>
+<div class="ws-grid">
+  {% for w in mine %}
+  <section class="card ws-card {{ 'on' if w.id == workspace.id }}">
+    <div class="ws-card-top"><span class="ws-logo lg" style="background:{{ w.color }}">{{ w.name|initials }}</span>
+      <div><h2 translate="no">{{ w.name }}</h2><small class="muted">{{ 'Workspace admin' if w.role == 'admin' else 'Member' }}</small></div></div>
+    {% if w.description %}<p class="muted" translate="no">{{ w.description }}</p>{% endif %}
+    <div class="proj-stats"><span><b>{{ w.members }}</b> members</span><span><b>{{ w.open_tasks }}</b> open</span></div>
+    {% if w.id == workspace.id %}<span class="pill st-done">Current workspace</span>
+    {% else %}
+    <form method="post" action="{{ url_for('workspace_switch', ws=w.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-light sm">Open</button></form>
+    {% endif %}
+  </section>
+  {% endfor %}
+  <section class="card ws-card new">
+    <h2><svg class="i"><use href="#i-plus"/></svg> New workspace</h2>
+    <form method="post" class="form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Name<input name="name" required minlength="2" maxlength="40" placeholder="e.g. Marketing team"></label>
+      <label>Description <small>(optional)</small><input name="description" maxlength="200"></label>
+      <div class="swatches sm">{% for c in COLORS %}<label><input type="radio" name="color" value="{{ c }}" {{ 'checked' if loop.index == 2 }}><i style="background:{{ c }}"></i></label>{% endfor %}</div>
+      <button class="btn btn-primary">Create workspace</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,159 @@
+Tasks	Задачи	Tâches	Tareas	المهام	任务	Imirimo
+Tasks I created	Созданные мной задачи	Tâches que j’ai créées	Tareas que creé	المهام التي أنشأتها	我创建的任务	Imirimo nakoze
+Tasks found:	Найдено задач:	Tâches trouvées :	Tareas encontradas:	المهام التي عُثر عليها:	找到的任务：	Imirimo yabonetse:
+Export CSV	Экспорт CSV	Exporter en CSV	Exportar CSV	تصدير CSV	导出 CSV	Ohereza muri CSV
+All	Все	Toutes	Todas	الكل	全部	Byose
+Open	Открытые	Ouvertes	Abiertas	المفتوحة	未完成	Bitararangira
+open	открыто	ouvertes	abiertas	مفتوحة	未完成	bitararangira
+Search title or description…	Поиск по названию или описанию…	Rechercher dans le titre ou la description…	Buscar en título o descripción…	ابحث في العنوان أو الوصف…	搜索标题或描述…	Shakisha mu mutwe cyangwa mu bisobanuro…
+Anyone	Кто угодно	N’importe qui	Cualquiera	أي شخص	任何人	Uwo ari we wese
+Unassigned	Не назначено	Non assignée	Sin asignar	غير مسندة	未分配	Nta wahawe
+Created by anyone	Создано кем угодно	Créées par n’importe qui	Creadas por cualquiera	أنشأها أي شخص	任何人创建	Byakozwe na buri wese
+Created by {0}	Создано: {0}	Créées par {0}	Creadas por {0}	أنشأها {0}	{0} 创建	Byakozwe na {0}
+{0} (me)	{0} (я)	{0} (moi)	{0} (yo)	{0} (أنا)	{0}（我）	{0} (njye)
+Any due date	Любой срок	Toute échéance	Cualquier fecha límite	أي موعد نهائي	任意截止日期	Itariki ntarengwa iyo ari yo yose
+Next 7 days	Следующие 7 дней	7 prochains jours	Próximos 7 días	الأيام السبعة القادمة	未来 7 天	Iminsi 7 iri imbere
+Sort: due date	Сортировка: срок	Tri : échéance	Ordenar: fecha límite	الترتيب: الموعد النهائي	排序：截止日期	Gutondeka: itariki ntarengwa
+Sort: priority	Сортировка: приоритет	Tri : priorité	Ordenar: prioridad	الترتيب: الأولوية	排序：优先级	Gutondeka: icyihutirwa
+Sort: newest	Сортировка: новые	Tri : plus récentes	Ordenar: más nuevas	الترتيب: الأحدث	排序：最新	Gutondeka: ibishya
+Sort: recently updated	Сортировка: недавно изменённые	Tri : modifiées récemment	Ordenar: actualizadas recientemente	الترتيب: المحدّثة مؤخرًا	排序：最近更新	Gutondeka: ibyavuguruwe vuba
+Sort: title	Сортировка: название	Tri : titre	Ordenar: título	الترتيب: العنوان	排序：标题	Gutondeka: umutwe
+Apply	Применить	Appliquer	Aplicar	تطبيق	应用	Shyira mu bikorwa
+selected	выбрано	sélectionnées	seleccionadas	محددة	已选择	byatoranyijwe
+Choose action…	Выберите действие…	Choisir une action…	Elige una acción…	اختر إجراءً…	选择操作…	Hitamo igikorwa…
+Change status	Изменить статус	Changer le statut	Cambiar estado	تغيير الحالة	更改状态	Hindura uko bihagaze
+Change priority	Изменить приоритет	Changer la priorité	Cambiar prioridad	تغيير الأولوية	更改优先级	Hindura icyihutirwa
+Assign to	Назначить	Assigner à	Asignar a	إسناد إلى	分配给	Ha
+Delete tasks	Удалить задачи	Supprimer les tâches	Eliminar tareas	حذف المهام	删除任务	Siba imirimo
+Select all	Выбрать все	Tout sélectionner	Seleccionar todo	تحديد الكل	全选	Hitamo byose
+Task	Задача	Tâche	Tarea	المهمة	任务	Umurimo
+Status	Статус	Statut	Estado	الحالة	状态	Uko bihagaze
+Priority	Приоритет	Priorité	Prioridad	الأولوية	优先级	Icyihutirwa
+Assignee	Исполнитель	Responsable	Responsable	المسؤول	负责人	Ushinzwe
+Due	Срок	Échéance	Vence	الموعد	截止	Itariki
+Edit	Изменить	Modifier	Editar	تعديل	编辑	Hindura
+Reset	Сбросить	Réinitialiser	Restablecer	إعادة تعيين	重置	Subiramo
+No tasks match these filters.	Нет задач по этим фильтрам.	Aucune tâche ne correspond à ces filtres.	Ninguna tarea coincide con estos filtros.	لا توجد مهام تطابق هذه المرشحات.	没有符合筛选条件的任务。	Nta murimo uhuye n’ibi byashunguwe.
+Try changing the filters or	Измените фильтры или	Modifiez les filtres ou	Cambia los filtros o	جرّب تغيير المرشحات أو	请调整筛选条件或	Gerageza guhindura ibyashunguwe cyangwa
+create a new task	создайте новую задачу	créez une nouvelle tâche	crea una nueva tarea	أنشئ مهمة جديدة	新建任务	ukore umurimo mushya
+/ New	/ Новая	/ Nouvelle	/ Nueva	/ جديدة	/ 新建	/ Gishya
+/ Edit	/ Изменение	/ Modifier	/ Editar	/ تعديل	/ 编辑	/ Guhindura
+Edit task	Изменить задачу	Modifier la tâche	Editar tarea	تعديل المهمة	编辑任务	Hindura umurimo
+Create a new task	Создать задачу	Créer une tâche	Crear una tarea	إنشاء مهمة جديدة	新建任务	Kora umurimo mushya
+Title	Название	Titre	Título	العنوان	标题	Umutwe
+e.g. Prepare monthly sales report	напр. Подготовить ежемесячный отчёт о продажах	ex. Préparer le rapport de ventes mensuel	p. ej. Preparar el informe mensual de ventas	مثال: إعداد تقرير المبيعات الشهري	例如：准备月度销售报告	urugero: Tegura raporo y’igurisha y’ukwezi
+Description	Описание	Description	Descripción	الوصف	描述	Ibisobanuro
+Add details, links or steps… Use @name to notify a teammate.	Добавьте детали, ссылки или шаги… Используйте @имя, чтобы уведомить коллегу.	Ajoutez des détails, liens ou étapes… Utilisez @nom pour prévenir un coéquipier.	Añade detalles, enlaces o pasos… Usa @nombre para avisar a un compañero.	أضف تفاصيل أو روابط أو خطوات… استخدم ‎@الاسم لتنبيه زميل.	添加详情、链接或步骤…… 使用 @姓名 通知队友。	Ongeraho ibisobanuro, imirongo cyangwa intambwe… Koresha @izina kugira ngo umenyeshe mugenzi wawe.
+Project	Проект	Projet	Proyecto	المشروع	项目	Umushinga
+No project	Без проекта	Sans projet	Sin proyecto	بدون مشروع	无项目	Nta mushinga
+Due date	Срок	Échéance	Fecha límite	الموعد النهائي	截止日期	Itariki ntarengwa
+e.g. 2h, 90m, 1.5	напр. 2ч, 90м, 1.5	ex. 2h, 90m, 1,5	p. ej. 2h, 90m, 1.5	مثال: 2h أو 90m أو 1.5	例如：2h、90m、1.5	urugero: 2h, 90m, 1.5
+Optional. Used for the hours burndown chart.	Необязательно. Используется в диаграмме сгорания по часам.	Facultatif. Utilisé pour le graphique d’avancement en heures.	Opcional. Se usa en el gráfico burndown por horas.	اختياري. يُستخدم في مخطط الإنجاز بالساعات.	可选，用于按小时的燃尽图。	Si ngombwa. Bikoreshwa mu gishushanyo cy’amasaha.
+Create task	Создать задачу	Créer la tâche	Crear tarea	إنشاء المهمة	创建任务	Kora umurimo
+Save changes	Сохранить изменения	Enregistrer	Guardar cambios	حفظ التغييرات	保存修改	Bika impinduka
+No description.	Нет описания.	Pas de description.	Sin descripción.	لا يوجد وصف.	无描述。	Nta bisobanuro.
+No checklist yet. Break this task into small steps.	Чек-листа пока нет. Разбейте задачу на небольшие шаги.	Pas encore de liste. Découpez cette tâche en petites étapes.	Aún no hay lista. Divide esta tarea en pasos pequeños.	لا توجد قائمة بعد. قسّم هذه المهمة إلى خطوات صغيرة.	还没有清单，把任务拆成小步骤吧。	Nta rutonde rurahari. Gabanya uyu murimo mu ntambwe nto.
+Add a checklist item…	Добавить пункт…	Ajouter un élément…	Añadir un elemento…	أضف بندًا…	添加清单项…	Ongeraho ingingo…
+Add	Добавить	Ajouter	Añadir	إضافة	添加	Ongeraho
+Mark as not done	Отметить как невыполненную	Marquer comme non terminée	Marcar como no hecha	وضع علامة غير منجزة	标记为未完成	Shyiraho ko bitarangiye
+Click to rename, Enter to save	Нажмите, чтобы переименовать, Enter — сохранить	Cliquez pour renommer, Entrée pour enregistrer	Haz clic para renombrar, Intro para guardar	انقر لإعادة التسمية، واضغط Enter للحفظ	点击重命名，按回车保存	Kanda uhindure izina, Enter ubike
+Remove item	Удалить пункт	Retirer l’élément	Quitar elemento	إزالة البند	删除清单项	Kuraho ingingo
+No files yet.	Файлов пока нет.	Pas encore de fichiers.	Aún no hay archivos.	لا توجد ملفات بعد.	暂无附件。	Nta dosiye irahari.
+Drop files here or	Перетащите файлы сюда или	Déposez des fichiers ici ou	Suelta archivos aquí o	أفلت الملفات هنا أو	把文件拖到这里，或	Shyira amadosiye hano cyangwa
+choose files	выберите файлы	choisissez des fichiers	elige archivos	اختر ملفات	选择文件	hitamo amadosiye
+PDF, pictures, Office, text, CSV or ZIP · max 5 MB each · up to 10 files per task	PDF, изображения, Office, текст, CSV или ZIP · до 5 МБ каждый · до 10 файлов на задачу	PDF, images, Office, texte, CSV ou ZIP · 5 Mo max chacun · jusqu’à 10 fichiers par tâche	PDF, imágenes, Office, texto, CSV o ZIP · máx. 5 MB cada uno · hasta 10 archivos por tarea	PDF أو صور أو Office أو نص أو CSV أو ZIP · حتى 5 ميغابايت لكل ملف · حتى 10 ملفات لكل مهمة	PDF、图片、Office、文本、CSV 或 ZIP · 每个最大 5 MB · 每个任务最多 10 个文件	PDF, amafoto, Office, inyandiko, CSV cyangwa ZIP · MB 5 buri imwe · kugeza ku madosiye 10 kuri buri murimo
+Download	Скачать	Télécharger	Descargar	تنزيل	下载	Kuramo
+Remove file	Удалить файл	Retirer le fichier	Quitar archivo	إزالة الملف	删除文件	Kuraho idosiye
+Remove this file?	Удалить этот файл?	Retirer ce fichier ?	¿Quitar este archivo?	هل تريد إزالة هذا الملف؟	删除此文件？	Ukuraho iyi dosiye?
+Time	Время	Temps	Tiempo	الوقت	工时	Igihe
+of {0} estimated	из {0} по оценке	sur {0} estimées	de {0} estimadas	من أصل {0} مقدّرة	（预估 {0}）	kuri {0} byagereranyijwe
+Logged time is {0}% over the estimate.	Записанное время превышает оценку на {0}%.	Le temps saisi dépasse l’estimation de {0} %.	El tiempo registrado supera la estimación en un {0}%.	الوقت المسجّل يتجاوز التقدير بنسبة {0}%.	已记录工时超出预估 {0}%。	Igihe cyanditswe kirenze igereranya ku {0}%.
+Start timer	Запустить таймер	Démarrer le chrono	Iniciar temporizador	بدء المؤقت	开始计时	Tangiza isaha
+Stop timer ·	Остановить таймер ·	Arrêter le chrono ·	Detener temporizador ·	إيقاف المؤقت ·	停止计时 ·	Hagarika isaha ·
+For example 45m, 1.5, 1h 30m or 1:30	Например 45m, 1.5, 1h 30m или 1:30	Par exemple 45m, 1,5, 1h 30m ou 1:30	Por ejemplo 45m, 1.5, 1h 30m o 1:30	مثلًا 45m أو 1.5 أو 1h 30m أو 1:30	例如 45m、1.5、1h 30m 或 1:30	Urugero 45m, 1.5, 1h 30m cyangwa 1:30
+What did you do? (optional)	Что вы сделали? (необязательно)	Qu’avez-vous fait ? (facultatif)	¿Qué hiciste? (opcional)	ماذا فعلت؟ (اختياري)	做了什么？（可选）	Wakoze iki? (si ngombwa)
+Log time	Записать время	Saisir le temps	Registrar tiempo	تسجيل الوقت	记录工时	Andika igihe
+Person	Сотрудник	Personne	Persona	الشخص	人员	Umuntu
+Day	День	Jour	Día	اليوم	日期	Umunsi
+Note	Заметка	Note	Nota	ملاحظة	备注	Icyitonderwa
+running	идёт	en cours	en marcha	قيد التشغيل	计时中	birakora
+Remove this time entry?	Удалить эту запись времени?	Retirer cette saisie de temps ?	¿Quitar este registro de tiempo?	هل تريد إزالة سجل الوقت هذا؟	删除这条工时记录？	Ukuraho iki gihe cyanditswe?
+Coding	Программирование	Développement	Programación	البرمجة	编码	Gukora porogaramu
+Testing	Тестирование	Tests	Pruebas	الاختبار	测试	Igerageza
+Review and fixes	Проверка и исправления	Revue et corrections	Revisión y correcciones	المراجعة والإصلاحات	审查与修复	Gusuzuma no gukosora
+Research	Исследование	Recherche	Investigación	البحث	调研	Ubushakashatsi
+Comments	Комментарии	Commentaires	Comentarios	التعليقات	评论	Ibitekerezo
+No comments yet. Start the conversation.	Комментариев пока нет. Начните обсуждение.	Pas encore de commentaires. Lancez la discussion.	Aún no hay comentarios. Empieza la conversación.	لا توجد تعليقات بعد. ابدأ المحادثة.	暂无评论，开始讨论吧。	Nta bitekerezo birahari. Tangiza ikiganiro.
+Write a comment… Use @name to notify a teammate.	Напишите комментарий… Используйте @имя, чтобы уведомить коллегу.	Écrivez un commentaire… Utilisez @nom pour prévenir un coéquipier.	Escribe un comentario… Usa @nombre para avisar a un compañero.	اكتب تعليقًا… استخدم ‎@الاسم لتنبيه زميل.	写评论…… 使用 @姓名 通知队友。	Andika igitekerezo… Koresha @izina kugira ngo umenyeshe mugenzi wawe.
+Send	Отправить	Envoyer	Enviar	إرسال	发送	Ohereza
+Mention:	Упомянуть:	Mentionner :	Mencionar:	إشارة:	提及：	Vuga:
+edited	изменено	modifié	editado	معدّل	已编辑	byahinduwe
+Delete comment	Удалить комментарий	Supprimer le commentaire	Eliminar comentario	حذف التعليق	删除评论	Siba igitekerezo
+Edit comment	Изменить комментарий	Modifier le commentaire	Editar comentario	تعديل التعليق	编辑评论	Hindura igitekerezo
+Delete this comment?	Удалить комментарий?	Supprimer ce commentaire ?	¿Eliminar este comentario?	هل تريد حذف هذا التعليق؟	删除这条评论？	Usiba iki gitekerezo?
+Delete this task? This cannot be undone.	Удалить задачу? Это нельзя отменить.	Supprimer cette tâche ? C’est irréversible.	¿Eliminar esta tarea? No se puede deshacer.	هل تريد حذف هذه المهمة؟ لا يمكن التراجع.	删除此任务？此操作无法撤销。	Usiba uyu murimo? Ntibishobora gusubizwaho.
+Delete this task?	Удалить задачу?	Supprimer cette tâche ?	¿Eliminar esta tarea?	هل تريد حذف هذه المهمة؟	删除此任务？	Usiba uyu murimo?
+Created by	Автор	Créée par	Creada por	أنشأها	创建者	Yakozwe na
+Created	Создано	Créée le	Creada	تاريخ الإنشاء	创建时间	Yakozwe
+Last update	Последнее изменение	Dernière mise à jour	Última actualización	آخر تحديث	最后更新	Ivugurura riheruka
+History	История	Historique	Historial	السجل	历史	Amateka
+Task deadlines for the whole team	Сроки задач всей команды	Échéances des tâches de toute l’équipe	Plazos de las tareas de todo el equipo	مواعيد مهام الفريق كله	全队任务截止日期	Amatariki ntarengwa y’imirimo y’itsinda ryose
+Previous month	Предыдущий месяц	Mois précédent	Mes anterior	الشهر السابق	上个月	Ukwezi gushize
+Next month	Следующий месяц	Mois suivant	Mes siguiente	الشهر التالي	下个月	Ukwezi gutaha
+New project	Новый проект	Nouveau projet	Nuevo proyecto	مشروع جديد	新建项目	Umushinga mushya
+{0} active projects · anyone can create a project; the owner and admins can change or delete it	Активных проектов: {0} · проект может создать любой; изменить или удалить — владелец и администраторы	{0} projets actifs · tout le monde peut créer un projet ; le propriétaire et les admins peuvent le modifier ou le supprimer	{0} proyectos activos · cualquiera puede crear un proyecto; el dueño y los admins pueden cambiarlo o eliminarlo	{0} مشاريع نشطة · يمكن لأي شخص إنشاء مشروع؛ ويمكن للمالك والمديرين تعديله أو حذفه	{0} 个进行中的项目 · 任何人都可以创建项目；所有者和管理员可修改或删除	Imishinga {0} ikora · buri wese ashobora gukora umushinga; nyirawo n’abayobozi bashobora kuwuhindura cyangwa kuwusiba
+Archived	В архиве	Archivé	Archivado	مؤرشف	已归档	Byabitswe mu bubiko
+No description	Нет описания	Pas de description	Sin descripción	لا يوجد وصف	无描述	Nta bisobanuro
+Owner:	Владелец:	Propriétaire :	Dueño:	المالك:	所有者：	Nyirawo:
+You	Вы	Vous	Tú	أنت	你	Wowe
+Open board	Открыть доску	Ouvrir le tableau	Abrir tablero	فتح اللوحة	打开看板	Fungura ikibaho
+Archive	В архив	Archiver	Archivar	أرشفة	归档	Bika mu bubiko
+Restore	Восстановить	Restaurer	Restaurar	استعادة	恢复	Garura
+Delete	Удалить	Supprimer	Eliminar	حذف	删除	Siba
+Name	Название	Nom	Nombre	الاسم	名称	Izina
+Color	Цвет	Couleur	Color	اللون	颜色	Ibara
+Save project	Сохранить проект	Enregistrer le projet	Guardar proyecto	حفظ المشروع	保存项目	Bika umushinga
+Delete project “	Удалить проект «	Supprimer le projet « 	¿Eliminar el proyecto “	حذف المشروع «	删除项目“	Usiba umushinga “
+This project has	В этом проекте	Ce projet contient	Este proyecto tiene	يحتوي هذا المشروع على	该项目有	Uyu mushinga ufite
+tasks. What should happen to them?	задач(и). Что с ними сделать?	tâches. Que faut-il en faire ?	tareas. ¿Qué hacemos con ellas?	مهام. ماذا نفعل بها؟	个任务。如何处理它们？	imirimo. Ikorerwe iki?
+Keep the tasks	Оставить задачи	Garder les tâches	Conservar las tareas	الإبقاء على المهام	保留任务	Gumana imirimo
+They stay in the task list without a project.	Они останутся в списке задач без проекта.	Elles restent dans la liste sans projet.	Se quedan en la lista sin proyecto.	تبقى في قائمة المهام بدون مشروع.	它们会保留在任务列表中，不属于任何项目。	Iguma ku rutonde rw’imirimo nta mushinga.
+Delete the tasks too	Удалить и задачи	Supprimer aussi les tâches	Eliminar también las tareas	حذف المهام أيضًا	同时删除任务	Siba n’imirimo
+The tasks and their comments are removed forever.	Задачи и их комментарии будут удалены навсегда.	Les tâches et leurs commentaires sont supprimés définitivement.	Las tareas y sus comentarios se eliminan para siempre.	تُحذف المهام وتعليقاتها نهائيًا.	任务及其评论将被永久删除。	Imirimo n’ibitekerezo byayo bisibwa burundu.
+Delete project	Удалить проект	Supprimer le projet	Eliminar proyecto	حذف المشروع	删除项目	Siba umushinga
+Projects group tasks, for example “Website” or “Marketing”.	Проекты объединяют задачи, например «Сайт» или «Маркетинг».	Les projets regroupent les tâches, par exemple « Site web » ou « Marketing ».	Los proyectos agrupan tareas, por ejemplo “Sitio web” o “Marketing”.	تجمع المشاريع المهام، مثل «الموقع» أو «التسويق».	项目用于归类任务，例如“网站”或“市场营销”。	Imishinga ihuza imirimo, urugero “Urubuga” cyangwa “Kwamamaza”.
+Active members:	Активных участников:	Membres actifs :	Miembros activos:	الأعضاء النشطون:	活跃成员：	Abanyamuryango bakora:
+Add member	Добавить участника	Ajouter un membre	Añadir miembro	إضافة عضو	添加成员	Ongeraho umunyamuryango
+Invite link	Ссылка-приглашение	Lien d’invitation	Enlace de invitación	رابط الدعوة	邀请链接	Umurongo w’ubutumire
+Send this link to a teammate. They create an account (or sign in) and join this workspace as a member.	Отправьте эту ссылку коллеге. Он создаст аккаунт (или войдёт) и присоединится к пространству как участник.	Envoyez ce lien à un coéquipier. Il crée un compte (ou se connecte) et rejoint cet espace en tant que membre.	Envía este enlace a un compañero. Creará una cuenta (o iniciará sesión) y se unirá a este espacio como miembro.	أرسل هذا الرابط إلى زميل. سينشئ حسابًا (أو يسجّل الدخول) وينضم إلى مساحة العمل كعضو.	把此链接发给队友。对方创建账户（或登录）后以成员身份加入本工作区。	Oherereza mugenzi wawe uyu murongo. Afungura konti (cyangwa akinjira) akinjira aha nk’umunyamuryango.
+Copy	Копировать	Copier	Copiar	نسخ	复制	Koporora
+New link	Новая ссылка	Nouveau lien	Nuevo enlace	رابط جديد	新链接	Umurongo mushya
+(you)	(вы)	(vous)	(tú)	(أنت)	（你）	(wowe)
+Inactive	Неактивен	Inactif	Inactivo	غير نشط	未激活	Ntakora
+Assigned	Назначено	Assignées	Asignadas	المسندة	已分配	Yahawe
+Completed:	Выполнено:	Terminées :	Completadas:	المنجز:	已完成：	Byarangiye:
+Edit my details and password →	Изменить мои данные и пароль →	Modifier mes informations et mon mot de passe →	Editar mis datos y contraseña →	تعديل بياناتي وكلمة المرور ←	编辑我的资料和密码 →	Hindura amakuru yanjye n’ijambo ry’ibanga →
+Leave workspace	Покинуть пространство	Quitter l’espace	Salir del espacio	مغادرة مساحة العمل	离开工作区	Va aho bakorera
+Leave this workspace? Your tasks here become unassigned.	Покинуть пространство? Ваши задачи здесь останутся без исполнителя.	Quitter cet espace ? Vos tâches ici ne seront plus assignées.	¿Salir de este espacio? Tus tareas aquí quedarán sin asignar.	مغادرة مساحة العمل؟ ستصبح مهامك هنا غير مسندة.	离开此工作区？你在这里的任务将变为未分配。	Uva aha? Imirimo yawe hano ntizagira uyishinzwe.
+Save role	Сохранить роль	Enregistrer le rôle	Guardar rol	حفظ الدور	保存角色	Bika inshingano
+Remove from workspace	Удалить из пространства	Retirer de l’espace	Quitar del espacio	إزالة من مساحة العمل	移出工作区	Kura aho bakorera
+Remove this person from the workspace? Their tasks here become unassigned. Their account stays.	Удалить человека из пространства? Его задачи здесь останутся без исполнителя. Аккаунт сохранится.	Retirer cette personne de l’espace ? Ses tâches ici ne seront plus assignées. Son compte reste.	¿Quitar a esta persona del espacio? Sus tareas aquí quedarán sin asignar. Su cuenta se mantiene.	إزالة هذا الشخص من مساحة العمل؟ ستصبح مهامه هنا غير مسندة ويبقى حسابه.	将此人移出工作区？其任务将变为未分配，账户保留。	Ukura uyu muntu aha? Imirimo ye hano ntizagira uyishinzwe. Konti ye iguma.
+Site administrator	Администратор сайта	Administrateur du site	Administrador del sitio	مدير الموقع	网站管理员	Umuyobozi w’urubuga
+Save details	Сохранить данные	Enregistrer les informations	Guardar datos	حفظ البيانات	保存资料	Bika amakuru
+New password (8+)	Новый пароль (8+)	Nouveau mot de passe (8+)	Nueva contraseña (8+)	كلمة مرور جديدة (8+)	新密码（8 位以上）	Ijambo ry’ibanga rishya (8+)
+Reset password	Сбросить пароль	Réinitialiser le mot de passe	Restablecer contraseña	إعادة تعيين كلمة المرور	重置密码	Hindura ijambo ry’ibanga
+Switch off two-factor login for this person?	Отключить двухфакторный вход для этого человека?	Désactiver la connexion à deux facteurs pour cette personne ?	¿Desactivar el inicio en dos pasos para esta persona?	إيقاف تسجيل الدخول بخطوتين لهذا الشخص؟	为此人关闭双重验证？	Ukurira uyu muntu kwinjira mu ntambwe ebyiri?
+Reset two-factor login	Сбросить двухфакторный вход	Réinitialiser la connexion à deux facteurs	Restablecer inicio en dos pasos	إعادة تعيين تسجيل الدخول بخطوتين	重置双重验证	Subiramo kwinjira mu ntambwe ebyiri
+Deactivate account	Деактивировать аккаунт	Désactiver le compte	Desactivar cuenta	تعطيل الحساب	停用账户	Hagarika konti
+Activate account	Активировать аккаунт	Activer le compte	Activar cuenta	تفعيل الحساب	启用账户	Fungura konti
+Delete this account everywhere? Their tasks become unassigned and their comments are removed.	Удалить аккаунт полностью? Его задачи останутся без исполнителя, комментарии будут удалены.	Supprimer ce compte partout ? Ses tâches ne seront plus assignées et ses commentaires seront supprimés.	¿Eliminar esta cuenta en todas partes? Sus tareas quedarán sin asignar y sus comentarios se eliminarán.	حذف هذا الحساب نهائيًا؟ ستصبح مهامه غير مسندة وتُحذف تعليقاته.	在所有地方删除此账户？其任务将变为未分配，评论将被删除。	Usiba iyi konti hose? Imirimo ye ntizagira uyishinzwe kandi ibitekerezo bye bizasibwa.
+Delete account	Удалить аккаунт	Supprimer le compte	Eliminar cuenta	حذف الحساب	删除账户	Siba konti
+Manage	Управлять	Gérer	Gestionar	إدارة	管理	Genzura
+Workload	Нагрузка	Charge de travail	Carga de trabajo	عبء العمل	工作量	Akazi buri wese afite
+Open tasks and estimated hours still to do	Открытые задачи и оценочные часы, которые осталось выполнить	Tâches ouvertes et heures estimées restantes	Tareas abiertas y horas estimadas pendientes	المهام المفتوحة والساعات المقدّرة المتبقية	未完成任务和剩余预估工时	Imirimo itararangira n’amasaha yagereranyijwe asigaye
+Estimated hours left	Осталось часов по оценке	Heures estimées restantes	Horas estimadas restantes	الساعات المقدّرة المتبقية	剩余预估工时	Amasaha yagereranyijwe asigaye
+Add team member	Добавить участника	Ajouter un membre	Añadir miembro del equipo	إضافة عضو إلى الفريق	添加团队成员	Ongeraho umunyamuryango
+If the person already has a TaskFlow account, they are simply added to this workspace (name and password are not changed).	Если у человека уже есть аккаунт TaskFlow, он просто добавляется в пространство (имя и пароль не меняются).	Si la personne a déjà un compte TaskFlow, elle est simplement ajoutée à cet espace (le nom et le mot de passe ne changent pas).	Si la persona ya tiene una cuenta de TaskFlow, simplemente se añade a este espacio (el nombre y la contraseña no cambian).	إذا كان لدى الشخص حساب في TaskFlow فسيُضاف ببساطة إلى مساحة العمل (لا يتغير الاسم ولا كلمة المرور).	如果此人已有 TaskFlow 账户，将直接加入本工作区（姓名和密码不变）。	Niba uwo muntu asanzwe afite konti ya TaskFlow, yongerwa aha gusa (izina n’ijambo ry’ibanga ntibihinduka).
+Role	Роль	Rôle	Rol	الدور	角色	Inshingano
+Temporary password	Временный пароль	Mot de passe temporaire	Contraseña temporal	كلمة مرور مؤقتة	临时密码	Ijambo ry’ibanga ry’agateganyo
+Only for a new account	Только для нового аккаунта	Seulement pour un nouveau compte	Solo para una cuenta nueva	لحساب جديد فقط	仅用于新账户	Ni iya konti nshya gusa

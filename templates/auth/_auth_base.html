@@ -4,7 +4,7 @@
 <div class="auth">
   <section class="auth-art">
     <a class="brand light" href="{{ url_for('login') }}">
-      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" width="38" height="38"><span>{{ settings.workspace_name }}</span>
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" width="38" height="38"><span>{{ settings.site_name }}</span>
     </a>
     <div class="auth-copy">
       <h1>Plan, track and finish work — together.</h1>
@@ -12,19 +12,22 @@
       <ul>
         <li><svg class="i"><use href="#i-board"/></svg> Drag-and-drop Kanban boards</li>
         <li><svg class="i"><use href="#i-calendar"/></svg> Deadlines on a team calendar</li>
-        <li><svg class="i"><use href="#i-chart"/></svg> Live reports for every person and project</li>
+        <li><svg class="i"><use href="#i-chart"/></svg> Live updates, time tracking and burndown charts</li>
+        <li><svg class="i"><use href="#i-users"/></svg> Several workspaces for different teams</li>
+        <li><svg class="i"><use href="#i-id"/></svg> A resume builder with a link to share</li>
       </ul>
     </div>
     <img class="auth-img" src="{{ url_for('static', filename='img/board-preview.png') }}" alt="TaskFlow board preview">
   </section>
   <section class="auth-form">
+    <div class="auth-top">{% include "_lang.html" %}<a href="{{ url_for('explore') }}"><svg class="i"><use href="#i-globe"/></svg> Explore resumes</a></div>
     <div class="auth-card">
       {% with msgs = get_flashed_messages(with_categories=true) %}
       {% for cat, m in msgs %}<div class="alert {{ cat }}">{{ m }}</div>{% endfor %}
       {% endwith %}
       {% block form %}{% endblock %}
     </div>
-    <p class="demo-note">Designed &amp; developed by <b>Jean Michel Mujyambere</b> · <a href="https://github.com/Mujyambere70" target="_blank" rel="noopener">github.com/Mujyambere70</a><br>Academic portfolio project · demo teammates are fictional</p>
+    <p class="demo-note">Designed &amp; developed by <a href="{{ url_for('about') }}"><b>Jean Michel Mujyambere</b></a> · <a href="https://github.com/Mujyambere70" target="_blank" rel="noopener">github.com/Mujyambere70</a><br>Academic portfolio project · demo teammates are fictional</p>
   </section>
 </div>
 {% endblock %}

@@ -1,0 +1,18 @@
+{% extends "auth/_auth_base.html" %}
+{% block title %}Join {{ ws.name }}{% endblock %}
+{% block form %}
+<div class="join-head"><span class="ws-logo lg" style="background:{{ ws.color }}">{{ ws.name|initials }}</span>
+<div><p class="muted">You are invited to the workspace</p><h2 translate="no">{{ ws.name }}</h2></div></div>
+{% if ws.description %}<p class="muted" translate="no">{{ ws.description }}</p>{% endif %}
+{% if user %}
+<form method="post" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <p>Signed in as <b translate="no">{{ user.name }}</b>.</p>
+  <button class="btn btn-primary btn-block btn-lg">Join the workspace</button>
+</form>
+<p class="switch"><a href="{{ url_for('dashboard') }}">Not now</a></p>
+{% else %}
+<a class="btn btn-primary btn-block btn-lg" href="{{ url_for('register', invite=code) }}">Create an account and join</a>
+<a class="btn btn-light btn-block" href="{{ url_for('login', next=url_for('join', code=code)) }}">I already have an account</a>
+{% endif %}
+{% endblock %}

@@ -18,8 +18,13 @@
 {% if t.sub_total %}<span class="chk {{ 'all' if t.sub_done == t.sub_total }}" title="Checklist"><svg class="i"><use href="#i-check"/></svg>{{ t.sub_done }}/{{ t.sub_total }}</span>{% endif %}
 {%- endmacro %}
 
+{% macro extras(t) -%}
+{% if t.file_count %}<span class="chk" title="Files"><svg class="i"><use href="#i-clip"/></svg>{{ t.file_count }}</span>{% endif %}
+{% if t.logged_minutes %}<span class="chk" title="Time logged"><svg class="i"><use href="#i-clock"/></svg>{{ t.logged_minutes|hours }}{% if t.estimate_minutes %}/{{ t.estimate_minutes|hours }}{% endif %}</span>{% elif t.estimate_minutes %}<span class="chk" title="Estimate"><svg class="i"><use href="#i-clock"/></svg>~{{ t.estimate_minutes|hours }}</span>{% endif %}
+{%- endmacro %}
+
 {% macro project_tag(t) -%}
-{% if t.project_name %}<span class="ptag"><i class="dot" style="background:{{ t.project_color }}"></i>{{ t.project_name }}</span>{% endif %}
+{% if t.project_name %}<span class="ptag"><i class="dot" style="background:{{ t.project_color }}"></i><span translate="no">{{ t.project_name }}</span></span>{% endif %}
 {%- endmacro %}
 
 {% macro activity_text(a) -%}
@@ -33,8 +38,17 @@
   'settings_updated': 'changed workspace settings', 'log_cleared': 'cleared the activity log', 'tasks_cleaned': 'cleaned up tasks',
   'project_deleted': 'deleted project', 'comment_deleted': 'deleted a comment on', 'bulk_update': 'bulk-updated tasks',
   'comment_edited': 'edited a comment on', 'checklist_added': 'added a checklist item to', 'checklist_done': 'ticked off an item in',
-  'checklist_removed': 'removed a checklist item from', 'account_closed': 'An account was closed:'} -%}
-<b>{{ a.name or 'Someone' }}</b> {{ verbs.get(a.action, a.action) }}
-{%- if a.task_title %} <a href="{{ url_for('task_detail', task_id=a.task_id) }}">{{ a.task_title }}</a>{% elif a.action in ('task_deleted','project_created','project_updated','project_archived','project_restored','user_deactivated','user_activated','password_reset','user_updated','user_deleted','project_deleted','account_closed') %} <i>{{ a.details }}</i>{% endif %}
-{%- if a.action in ('status_changed', 'task_completed') %} <span class="muted">({{ a.details }})</span>{% elif a.action == 'commented' %}: <span class="muted">“{{ a.details }}”</span>{% elif a.action in ('checklist_added', 'checklist_done', 'checklist_removed') %} <span class="muted">“{{ a.details }}”</span>{% elif a.action in ('bulk_update', 'log_cleared', 'tasks_cleaned') %} <span class="muted">({{ a.details }})</span>{% elif a.action == 'user_added' %} <span class="muted">{{ a.details }}</span>{% endif %}
+  'checklist_removed': 'removed a checklist item from', 'account_closed': 'An account was closed:',
+  'attachment_added': 'attached a file to', 'attachment_deleted': 'removed a file from', 'time_logged': 'logged time on',
+  'workspace_created': 'created the workspace', 'invite_renewed': 'made a new invite link', 'member_removed': 'removed a member:',
+  'member_left': 'left the workspace', 'member_joined': 'joined the workspace', 'resume_created': 'created a resume',
+  'resume_deleted': 'deleted a resume', '2fa_enabled': 'turned on two-factor login', '2fa_disabled': 'turned off two-factor login',
+  '2fa_reset': 'reset two-factor login of a member', 'password_reset_by_email': 'reset their password by email',
+  'workspace_deleted': 'deleted a workspace'} -%}
+{% if a.name %}<b translate="no">{{ a.name }}</b>{% else %}<b>Someone</b>{% endif %} {{ verbs.get(a.action, a.action) }}
+{%- if a.task_title %} <a href="{{ url_for('task_detail', task_id=a.task_id) }}" translate="no">{{ a.task_title }}</a>{% elif a.action in ('task_deleted','project_created','project_updated','project_archived','project_restored','user_deactivated','user_activated','password_reset','user_updated','user_deleted','project_deleted','account_closed') %} <i>{{ a.details }}</i>{% endif %}
+{%- if a.action == 'time_logged' %} <span class="muted">({{ (a.details.split()[0]|int)|hours }})</span>
+{%- elif a.action in ('attachment_added', 'attachment_deleted') %} <span class="muted" translate="no">({{ a.details }})</span>
+{%- elif a.action in ('member_removed', 'workspace_created') %} <i>{{ a.details }}</i>
+{%- elif a.action in ('status_changed', 'task_completed') %} <span class="muted">({{ a.details }})</span>{% elif a.action == 'commented' %}: <span class="muted" translate="no">“{{ a.details }}”</span>{% elif a.action in ('checklist_added', 'checklist_done', 'checklist_removed') %} <span class="muted" translate="no">“{{ a.details }}”</span>{% elif a.action in ('bulk_update', 'log_cleared', 'tasks_cleaned') %} <span class="muted">({{ a.details }})</span>{% elif a.action == 'user_added' %} <span class="muted">{{ a.details }}</span>{% endif %}
 {%- endmacro %}

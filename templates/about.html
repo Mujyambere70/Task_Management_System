@@ -1,0 +1,60 @@
+{% extends "public_base.html" %}
+{% block title %}About TaskFlow{% endblock %}
+{% block content %}
+<section class="about-hero">
+  <div>
+    <span class="pill st-in_progress">Version 2</span>
+    <h1>TaskFlow — team tasks, time and resumes in one place</h1>
+    <p class="lead">A web app for small teams: workspaces, a live Kanban board, deadlines with email reminders, files, time tracking, burndown charts and a resume builder with a link to share. In 7 languages.</p>
+    <div class="actions">
+      <a class="btn btn-primary" href="{{ url_for('dashboard') if user else url_for('login') }}">{{ 'Open TaskFlow' if user else 'Try the demo' }}</a>
+      <a class="btn btn-light" href="{{ url_for('explore') }}">Explore resumes</a>
+    </div>
+  </div>
+  <img src="{{ url_for('static', filename='img/board-preview.png') }}" alt="TaskFlow board" class="about-img">
+</section>
+
+<section class="dev-card card">
+  <div class="dev-photo">JM</div>
+  <div>
+    <small class="muted">Designed &amp; developed by</small>
+    <h2 translate="no">Jean Michel Mujyambere</h2>
+    <p translate="no">Software Engineer · Python Development · Data Analytics · UX Design · Machine Learning</p>
+    <p class="muted">Master’s student in Applied Mathematics and Informatics (Data Analysis), Siberian Federal University, Krasnoyarsk.</p>
+    <div class="actions">
+      <a class="btn btn-primary sm" href="{{ url_for('resume_public', slug='jean-michel-mujyambere') }}"><svg class="i"><use href="#i-id"/></svg> My resume</a>
+      <a class="btn btn-light sm" href="https://github.com/Mujyambere70" target="_blank" rel="noopener">GitHub</a>
+      <a class="btn btn-light sm" href="https://linkedin.com/in/jeanmichel" target="_blank" rel="noopener">LinkedIn</a>
+      <a class="btn btn-light sm" href="mailto:mujyamberejean9@gmail.com">Email</a>
+    </div>
+  </div>
+</section>
+
+<h2 class="section-title">What TaskFlow can do</h2>
+<div class="feature-grid">
+  {% for icon, title, text in [
+    ('i-users', 'Several workspaces', 'Each team has its own projects, tasks, members and reports. Invite people with a link.'),
+    ('i-bolt', 'Live board', 'Changes of teammates appear at once (WebSocket), without reloading the page.'),
+    ('i-bell', 'Reminders and notifications', 'An email one day before a deadline, @mentions, comments and assigned tasks under the bell.'),
+    ('i-clip', 'Files on tasks', 'Attach PDF, pictures, Office files and more (up to 5 MB each), kept safely in the database.'),
+    ('i-clock', 'Time tracking', 'A start/stop timer or time typed by hand, estimates, a time report and a CSV export.'),
+    ('i-chart', 'Burndown charts', 'See every day how much work is left, by tasks or by estimated hours, next to the ideal line.'),
+    ('i-id', 'Resume builder', 'Design a resume with 3 layouts, your colors and sections, then share a link or save it as PDF.'),
+    ('i-globe', '7 languages', 'English, Russian, French, Spanish, Arabic (right to left), Chinese and Kinyarwanda.'),
+    ('i-shield', 'Security', 'Hashed passwords, CSRF protection, two-factor login, password reset by email, roles.'),
+    ('i-database', 'PostgreSQL', 'Runs on SQLite on a laptop and on PostgreSQL (Neon) online; data stays after restarts.')] %}
+  <div class="card feature"><span class="kpi-ic ic-indigo"><svg class="i"><use href="#{{ icon }}"/></svg></span><b>{{ title }}</b><p class="muted small">{{ text }}</p></div>
+  {% endfor %}
+</div>
+
+<h2 class="section-title">Built with</h2>
+<p class="chips" translate="no">{% for t in ['Python 3', 'Flask', 'Jinja2', 'PostgreSQL', 'SQLite', 'WebSocket (flask-sock)', 'Gunicorn', 'Babel', 'Pillow', 'JavaScript', 'HTML', 'CSS', 'Docker', 'Fly.io', 'Neon', 'pytest'] %}<span class="chip">{{ t }}</span>{% endfor %}</p>
+
+<h2 class="section-title">My other projects</h2>
+<div class="feature-grid">
+  <a class="card feature" href="https://michel-pybank.fly.dev/" target="_blank" rel="noopener"><b translate="no">PyBank</b><p class="muted small">Online banking system: transfers, statements, cards, PIN, limits.</p></a>
+  <a class="card feature" href="https://yo-delivery.fly.dev/" target="_blank" rel="noopener"><b translate="no">Yo Delivery</b><p class="muted small">E-commerce and delivery platform: catalogue, cart, checkout, order tracking.</p></a>
+  <a class="card feature" href="https://calcwise.fly.dev/" target="_blank" rel="noopener"><b translate="no">CalcWise</b><p class="muted small">Finance calculator: investments, loans and bonds with charts.</p></a>
+</div>
+<p class="muted small center">This is an academic portfolio project. Demo teammates and companies are fictional.</p>
+{% endblock %}

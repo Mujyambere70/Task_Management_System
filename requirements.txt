@@ -1,2 +1,6 @@
 Flask>=3.0
-gunicorn>=22.0     # web server for online hosting (Render); not needed on Windows
+gunicorn>=22.0            # production web server (used in the Dockerfile)
+psycopg[binary]>=3.1      # PostgreSQL driver (Neon). Not needed for the SQLite file on your laptop
+Babel>=2.14               # dates and month names in 7 languages
+Pillow>=10.0              # resume photos (cut to 400 x 400)
+flask-sock>=0.7           # real-time board updates (WebSocket)

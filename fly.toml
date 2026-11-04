@@ -1,0 +1,34 @@
+# Fly.io settings for TaskFlow.
+# Secrets are NEVER written in this file. Set them once with:
+#   fly secrets set DATABASE_URL="postgresql://...neon.tech/...?sslmode=require" SECRET_KEY="..." APP_URL="https://michel-taskflow.fly.dev" --app michel-taskflow
+app = "michel-taskflow"
+primary_region = "ams"
+
+[build]
+
+[env]
+  SECURE_COOKIES = "1"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"     # the machine sleeps when nobody visits
+  auto_start_machines = true      # and wakes up on the next visit
+  min_machines_running = 0        # saves your free machine limit
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 60
+    hard_limit = 80
+
+[[http_service.checks]]
+  grace_period = "20s"
+  interval = "60s"
+  method = "GET"
+  path = "/about"
+  timeout = "5s"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

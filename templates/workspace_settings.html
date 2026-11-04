@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Workspace settings{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Workspace settings</h1><p class="muted">{{ 'Only admins of {0} see this page.'|tr|replace('{0}', workspace.name) }}</p></div>
+  <a class="btn btn-light" href="{{ url_for('team') }}"><svg class="i"><use href="#i-users"/></svg> Members</a>
+</div>
+<div class="grid-2">
+  <section class="card settings-form">
+    <h2>General</h2>
+    <form method="post" class="form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Name<input name="name" value="{{ workspace.name }}" required minlength="2" maxlength="40"></label>
+      <label>Description<textarea name="description" rows="2" maxlength="200">{{ workspace.description }}</textarea></label>
+      <label>Color</label>
+      <div class="swatches">{% for c in COLORS %}<label><input type="radio" name="color" value="{{ c }}" {{ 'checked' if c == workspace.color }}><i style="background:{{ c }}"></i></label>{% endfor %}</div>
+      <label>Default priority for new tasks
+        <select name="default_priority">{% for k, n in PRIORITIES %}<option value="{{ k }}" {{ 'selected' if workspace.default_priority == k }}>{{ n }}</option>{% endfor %}</select></label>
+      <div class="form-actions"><button class="btn btn-primary">Save settings</button></div>
+    </form>
+  </section>
+  <section class="card" id="invite">
+    <h2><svg class="i"><use href="#i-link"/></svg> Invite link</h2>
+    <p class="muted small">Anyone with this link can join the workspace as a member. Make a new link if the old one was shared with the wrong people.</p>
+    <div class="copy-row"><input readonly value="{{ invite_link }}" id="inviteLink" translate="no"><button class="btn btn-light sm" data-copy="#inviteLink"><svg class="i"><use href="#i-copy"/></svg> Copy</button></div>
+    <div id="inviteQr" class="qr small-qr" data-uri="{{ invite_link }}"></div>
+    <form method="post" data-confirm="Make a new link? The old link stops working.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="invite">
+      <button class="btn btn-light sm">Make a new link</button>
+    </form>
+  </section>
+</div>
+<section class="card">
+  <h2>Clean up</h2>
+  <div class="danger-list">
+    <div class="danger-item">
+      <div><b>Remove old completed tasks</b><p class="muted small">Delete tasks of this workspace that were finished a long time ago (with their comments, files and time entries).</p></div>
+      <form method="post" data-confirm="Delete these completed tasks? This cannot be undone.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="clean_tasks">
+        <select name="days"><option value="90">Done over 90 days ago</option><option value="30">Done over 30 days ago</option><option value="0">All completed tasks</option></select>
+        <button class="btn btn-light sm">Remove</button>
+      </form>
+    </div>
+    <div class="danger-item red">
+      <div><b class="red">Delete this workspace</b><p class="muted small">All projects, tasks, comments, files and time entries of this workspace are deleted. Member accounts stay.</p></div>
+      <form method="post" data-confirm="Delete the whole workspace? This cannot be undone.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="delete">
+        <input name="confirm" placeholder="Type the workspace name" required autocomplete="off">
+        <button class="btn btn-danger sm">Delete workspace</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>TF.qr(document.getElementById('inviteQr'), 3);</script>
+{% endblock %}

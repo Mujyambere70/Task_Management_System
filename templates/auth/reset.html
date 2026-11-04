@@ -1,0 +1,18 @@
+{% extends "auth/_auth_base.html" %}
+{% block title %}New password{% endblock %}
+{% block form %}
+<h2>Choose a new password</h2>
+{% if ok %}
+<form method="post" class="form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>New password<input type="password" name="new" minlength="8" required autofocus autocomplete="new-password"></label>
+  <label>Confirm<input type="password" name="confirm" minlength="8" required autocomplete="new-password"></label>
+  <p class="hint">At least 8 characters.</p>
+  <button class="btn btn-primary btn-block btn-lg">Save the new password</button>
+</form>
+{% else %}
+<div class="alert error">This link has expired or was already used. Please ask for a new one.</div>
+<a class="btn btn-light btn-block" href="{{ url_for('forgot') }}">Ask for a new link</a>
+{% endif %}
+<p class="switch"><a href="{{ url_for('login') }}">Back to sign in</a></p>
+{% endblock %}
