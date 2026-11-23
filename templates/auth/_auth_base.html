@@ -4,7 +4,7 @@
 <div class="auth">
   <section class="auth-art">
     <a class="brand light" href="{{ url_for('login') }}">
-      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" width="38" height="38"><span>{{ settings.site_name }}</span>
+      <img src="{{ url_for('brand_logo') }}" alt="" width="38" height="38"><span translate="no">{{ CFG.site_name }}</span>
     </a>
     <div class="auth-copy">
       <h1>Plan, track and finish work — together.</h1>

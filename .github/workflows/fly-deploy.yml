@@ -1,16 +1,26 @@
-# See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
-
-name: Fly Deploy
+# Tests on every push; when they pass on main, the app is deployed to Fly.io.
+# The FLY_API_TOKEN secret is set in GitHub (Settings -> Secrets and variables -> Actions); never in this file.
+name: Test and deploy
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [main, master]
+  pull_request:
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests
   deploy:
     name: Deploy app
+    needs: test
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    concurrency: deploy-group    # optional: ensure only one action runs at a time
+    concurrency: deploy-group
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master

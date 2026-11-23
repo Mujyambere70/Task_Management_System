@@ -1,0 +1,154 @@
+# TaskFlow 3
+Languages on: {0}	Включено языков: {0}	Langues actives : {0}	Idiomas activos: {0}	اللغات المفعّلة: {0}	已开启语言：{0}	Indimi zifunguye: {0}
+Overview	Обзор	Vue d'ensemble	Resumen	نظرة عامة	概览	Incamake
+Accounts	Аккаунты	Comptes	Cuentas	الحسابات	账户	Konti
+Translations	Переводы	Traductions	Traducciones	الترجمات	翻译	Ubusobanuro
+Messages sent	Отправленные сообщения	Messages envoyés	Mensajes enviados	الرسائل المرسلة	已发送消息	Ubutumwa bwoherejwe
+Audit log	Журнал аудита	Journal d'audit	Registro de auditoría	سجل التدقيق	审计日志	Igitabo cy'ibikorwa
+Site at a glance	Сайт коротко	Le site en bref	El sitio de un vistazo	الموقع بلمحة	网站概况	Urubuga muri make
+New people can sign up	Новые люди могут регистрироваться	Les nouveaux peuvent s'inscrire	Las personas nuevas pueden registrarse	يمكن للأشخاص الجدد التسجيل	新用户可以注册	Abantu bashya bashobora kwiyandikisha
+Sign up is closed (invite links still work)	Регистрация закрыта (ссылки-приглашения работают)	Inscriptions fermées (les liens d'invitation marchent)	Registro cerrado (los enlaces de invitación funcionan)	التسجيل مغلق (روابط الدعوة تعمل)	注册已关闭（邀请链接仍有效）	Kwiyandikisha birafunze (amahuza y'ubutumire arakora)
+Change	Изменить	Modifier	Cambiar	تغيير	更改	Hindura
+Maintenance mode	Режим обслуживания	Mode maintenance	Modo mantenimiento	وضع الصيانة	维护模式	Uburyo bwo kuvugurura
+On: only site administrators can use the site.	Включён: сайтом могут пользоваться только администраторы сайта.	Activé : seuls les administrateurs du site peuvent l'utiliser.	Activado: solo los administradores del sitio pueden usarlo.	مفعّل: يمكن لمديري الموقع فقط استخدامه.	已开启：只有网站管理员可以使用网站。	Birafunguye: abayobozi b'urubuga bonyine ni bo barukoresha.
+Accounts and workspaces	Аккаунты и пространства	Comptes et espaces	Cuentas y espacios	الحسابات ومساحات العمل	账户和工作区	Konti n'ahakorerwa
+{0} accounts · {1} workspaces	{0} аккаунтов · {1} пространств	{0} comptes · {1} espaces	{0} cuentas · {1} espacios	{0} حسابات · {1} مساحات عمل	{0} 个账户 · {1} 个工作区	Konti {0} · ahakorerwa {1}
+My own account	Мой аккаунт	Mon propre compte	Mi propia cuenta	حسابي	我的账户	Konti yanjye
+Restore a backup	Восстановить резервную копию	Restaurer une sauvegarde	Restaurar una copia	استعادة نسخة احتياطية	恢复备份	Garura ububiko bw'inyongera
+Replaces ALL data with the data in a backup file made by TaskFlow (version 2 or 3). Everybody is signed out.	Заменяет ВСЕ данные данными из резервной копии TaskFlow (версии 2 или 3). Все пользователи выйдут из системы.	Remplace TOUTES les données par celles d'une sauvegarde TaskFlow (version 2 ou 3). Tout le monde est déconnecté.	Reemplaza TODOS los datos por los de una copia de TaskFlow (versión 2 o 3). Se cierra la sesión de todos.	يستبدل كل البيانات ببيانات ملف نسخة احتياطية من TaskFlow (الإصدار 2 أو 3). يُسجَّل خروج الجميع.	用 TaskFlow（第 2 或 3 版）备份文件中的数据替换全部数据。所有人都会被退出登录。	Isimbuza amakuru YOSE amakuru ari muri dosiye y'ububiko ya TaskFlow (verisiyo 2 cyangwa 3). Bose barasohorwa.
+Backup file	Файл резервной копии	Fichier de sauvegarde	Archivo de copia	ملف النسخة الاحتياطية	备份文件	Dosiye y'ububiko
+Type RESTORE	Введите RESTORE	Tapez RESTORE	Escribe RESTORE	اكتب RESTORE	输入 RESTORE	Andika RESTORE
+This replaces all data. Are you sure?	Это заменит все данные. Вы уверены?	Cela remplace toutes les données. Êtes-vous sûr ?	Esto reemplaza todos los datos. ¿Seguro?	سيستبدل هذا كل البيانات. هل أنت متأكد؟	这会替换所有数据。确定吗？	Ibi bisimbuza amakuru yose. Urabyizeye?
+These settings change the whole website for everybody. Every change is written to the audit log.	Эти настройки меняют весь сайт для всех. Каждое изменение записывается в журнал аудита.	Ces paramètres changent tout le site pour tout le monde. Chaque modification est inscrite au journal d'audit.	Estos ajustes cambian todo el sitio para todos. Cada cambio se anota en el registro de auditoría.	تغيّر هذه الإعدادات الموقع كله للجميع. يُسجَّل كل تغيير في سجل التدقيق.	这些设置会对所有人改变整个网站。每次更改都会写入审计日志。	Iri genamiterere rihindura urubuga rwose kuri bose. Buri gihinduka cyandikwa mu gitabo cy'ibikorwa.
+Brand	Бренд	Marque	Marca	الهوية	品牌	Ikirango cy'urubuga
+Website name	Название сайта	Nom du site	Nombre del sitio	اسم الموقع	网站名称	Izina ry'urubuga
+Shown in the title of every page and in emails.	Показывается в заголовке каждой страницы и в письмах.	Affiché dans le titre de chaque page et dans les e-mails.	Se muestra en el título de cada página y en los correos.	يظهر في عنوان كل صفحة وفي الرسائل.	显示在每个页面标题和邮件中。	Rigaragara mu mutwe wa buri rupapuro no muri imeyili.
+Logo	Логотип	Logo	Logotipo	الشعار	标志	Ikirango (logo)
+Square picture; it is made 128 x 128. Empty = the TaskFlow logo.	Квадратная картинка, уменьшается до 128 x 128. Пусто = логотип TaskFlow.	Image carrée ; elle est mise en 128 x 128. Vide = logo TaskFlow.	Imagen cuadrada; se deja en 128 x 128. Vacío = logotipo de TaskFlow.	صورة مربعة تُحوَّل إلى 128 × 128. فارغ = شعار TaskFlow.	正方形图片，会调整为 128 x 128。留空 = TaskFlow 标志。	Ifoto ya kare; igirwa 128 x 128. Ubusa = logo ya TaskFlow.
+Use the TaskFlow logo again	Снова использовать логотип TaskFlow	Reprendre le logo TaskFlow	Volver al logotipo de TaskFlow	استخدم شعار TaskFlow مجددًا	恢复使用 TaskFlow 标志	Ongera ukoreshe logo ya TaskFlow
+Main colour	Основной цвет	Couleur principale	Color principal	اللون الرئيسي	主色	Ibara nyamukuru
+Buttons and links.	Кнопки и ссылки.	Boutons et liens.	Botones y enlaces.	الأزرار والروابط.	按钮和链接。	Utubuto n'amahuza.
+Announcement at the top of every page	Объявление вверху каждой страницы	Annonce en haut de chaque page	Anuncio arriba de cada página	إعلان أعلى كل صفحة	每页顶部的公告	Itangazo hejuru ya buri rupapuro
+Empty = no announcement.	Пусто = без объявления.	Vide = pas d'annonce.	Vacío = sin anuncio.	فارغ = بلا إعلان.	留空 = 无公告。	Ubusa = nta tangazo.
+Line at the bottom of every page	Строка внизу каждой страницы	Ligne en bas de chaque page	Línea al pie de cada página	سطر أسفل كل صفحة	每页底部的文字	Umurongo wo hasi kuri buri rupapuro
+Empty = the usual line.	Пусто = обычная строка.	Vide = la ligne habituelle.	Vacío = la línea de siempre.	فارغ = السطر المعتاد.	留空 = 默认文字。	Ubusa = umurongo usanzwe.
+Language for new visitors	Язык для новых посетителей	Langue des nouveaux visiteurs	Idioma para visitantes nuevos	لغة الزوار الجدد	新访客的语言	Ururimi rw'abashyitsi bashya
+Used when the browser does not ask for a language we have.	Используется, если браузер не просит язык, который у нас есть.	Utilisée quand le navigateur ne demande pas une langue disponible.	Se usa cuando el navegador no pide un idioma que tengamos.	تُستخدم عندما لا يطلب المتصفح لغة متوفرة لدينا.	当浏览器请求的语言不可用时使用。	Bukoreshwa iyo mushakisha idasaba ururimi dufite.
+Languages people can choose	Языки, которые можно выбрать	Langues au choix	Idiomas que se pueden elegir	اللغات المتاحة للاختيار	可选择的语言	Indimi abantu bashobora guhitamo
+English is always on.	Английский всегда включён.	L'anglais est toujours actif.	El inglés siempre está activo.	الإنجليزية مفعّلة دائمًا.	英语始终开启。	Icyongereza gihora gifunguye.
+Invite links always work.	Ссылки-приглашения работают всегда.	Les liens d'invitation marchent toujours.	Los enlaces de invitación siempre funcionan.	روابط الدعوة تعمل دائمًا.	邀请链接始终有效。	Amahuza y'ubutumire ahora akora.
+Most workspaces one person can create	Сколько пространств может создать один человек	Nombre max. d'espaces créés par personne	Máximo de espacios que crea una persona	الحد الأقصى لمساحات العمل للشخص	每人最多可创建的工作区	Umubare ntarengwa w'ahakorerwa umuntu akora
+Most resumes per person	Максимум резюме на человека	Nombre max. de CV par personne	Máximo de currículums por persona	الحد الأقصى للسير الذاتية للشخص	每人最多简历数	Umubare ntarengwa wa CV ku muntu
+Largest file (MB)	Самый большой файл (МБ)	Taille max. d'un fichier (Mo)	Archivo más grande (MB)	أكبر ملف (ميغابايت)	最大文件（MB）	Dosiye nini cyane (MB)
+Files are kept in the database.	Файлы хранятся в базе данных.	Les fichiers sont gardés dans la base de données.	Los archivos se guardan en la base de datos.	تُحفظ الملفات في قاعدة البيانات.	文件保存在数据库中。	Amadosiye abikwa mu bubiko bw'amakuru.
+Most files per task	Максимум файлов на задачу	Nombre max. de fichiers par tâche	Máximo de archivos por tarea	الحد الأقصى للملفات لكل مهمة	每个任务最多文件数	Umubare ntarengwa w'amadosiye ku murimo
+Data	Данные	Données	Datos	البيانات	数据	Amakuru
+Days deleted tasks stay in the trash	Сколько дней удалённые задачи лежат в корзине	Jours de conservation dans la corbeille	Días que las tareas eliminadas quedan en la papelera	أيام بقاء المهام المحذوفة في السلة	已删除任务在回收站保留的天数	Iminsi imirimo yasibwe iguma mu myanda
+Only site administrators can use the site; everybody else sees the message.	Сайтом могут пользоваться только администраторы; остальные видят сообщение.	Seuls les administrateurs du site peuvent l'utiliser ; les autres voient le message.	Solo los administradores del sitio pueden usarlo; los demás ven el mensaje.	يستخدم الموقع مديروه فقط؛ ويرى الآخرون الرسالة.	只有网站管理员可以使用网站，其他人会看到提示信息。	Abayobozi b'urubuga bonyine ni bo barukoresha; abandi babona ubutumwa.
+Message during maintenance	Сообщение во время обслуживания	Message pendant la maintenance	Mensaje durante el mantenimiento	الرسالة أثناء الصيانة	维护期间的提示	Ubutumwa mu gihe cy'ivugurura
+TaskFlow is being updated. Please come back in a few minutes.	TaskFlow обновляется. Пожалуйста, зайдите через несколько минут.	TaskFlow est en cours de mise à jour. Revenez dans quelques minutes.	TaskFlow se está actualizando. Vuelve en unos minutos.	يجري تحديث TaskFlow. عد بعد دقائق.	TaskFlow 正在更新，请几分钟后再来。	TaskFlow irimo kuvugururwa. Garuka nyuma y'iminota mike.
+Sender name of emails	Имя отправителя писем	Nom d'expéditeur des e-mails	Nombre del remitente	اسم مرسل الرسائل	邮件发件人名称	Izina ry'uwohereza imeyili
+The mail service itself is set with BREVO_* or SMTP_* secrets.	Сам почтовый сервис задаётся секретами BREVO_* или SMTP_*.	Le service d'e-mail lui-même se règle avec les secrets BREVO_* ou SMTP_*.	El servicio de correo se configura con los secretos BREVO_* o SMTP_*.	تُضبط خدمة البريد نفسها عبر أسرار BREVO_* أو SMTP_*.	邮件服务本身通过 BREVO_* 或 SMTP_* 密钥设置。	Serivisi ya imeyili ishyirwaho na secrets za BREVO_* cyangwa SMTP_*.
+Signature under every email	Подпись под каждым письмом	Signature sous chaque e-mail	Firma bajo cada correo	التوقيع أسفل كل رسالة	每封邮件的签名	Umukono munsi ya buri imeyili
+Accounts on the site: {0}. Open an account to change anything in it.	Аккаунтов на сайте: {0}. Откройте аккаунт, чтобы изменить в нём что угодно.	Comptes sur le site : {0}. Ouvrez un compte pour y changer quoi que ce soit.	Cuentas en el sitio: {0}. Abre una cuenta para cambiar lo que quieras.	الحسابات في الموقع: {0}. افتح حسابًا لتغيير أي شيء فيه.	网站账户：{0}。打开账户即可修改其中任何内容。	Konti ziri ku rubuga: {0}. Fungura konti kugira ngo uhindure icyo ari cyo cyose.
+Add account	Добавить аккаунт	Ajouter un compte	Añadir cuenta	أضف حسابًا	添加账户	Ongeramo konti
+Name, email or job…	Имя, email или должность…	Nom, e-mail ou poste…	Nombre, correo o puesto…	الاسم أو البريد أو الوظيفة…	姓名、邮箱或职位…	Izina, imeyili cyangwa akazi…
+Last sign in	Последний вход	Dernière connexion	Último acceso	آخر دخول	最近登录	Kwinjira kwa nyuma
+Turned off	Отключён	Désactivé	Desactivada	معطّل	已停用	Yafunzwe
+(me)	(я)	(moi)	(yo)	(أنا)	（我）	(njye)
+At least 8 characters with a letter and a number. The person can change it later.	Не меньше 8 символов, с буквой и цифрой. Человек сможет сменить его позже.	Au moins 8 caractères avec une lettre et un chiffre. La personne pourra le changer.	Al menos 8 caracteres con una letra y un número. La persona puede cambiarla después.	8 أحرف على الأقل بحرف ورقم. يمكن للشخص تغييرها لاحقًا.	至少 8 个字符，含字母和数字。对方之后可以修改。	Nibura inyuguti 8 zirimo inyuguti n'umubare. Nyirayo ashobora kuyihindura nyuma.
+None yet	Пока нет	Aucun pour l'instant	Ninguno aún	لا شيء بعد	暂不加入	Nta na kimwe ubu
+Role there	Роль там	Rôle	Rol allí	الدور هناك	在该处的角色	Uruhare aho
+Make this person a site administrator too	Сделать этого человека ещё и администратором сайта	Faire aussi de cette personne un administrateur du site	Hacer también a esta persona administradora del sitio	اجعل هذا الشخص مديرًا للموقع أيضًا	同时设为网站管理员	Gira uyu muntu n'umuyobozi w'urubuga
+Joined	Присоединился	Inscrit le	Se unió	انضم	加入于	Yinjiye
+← Accounts	← Аккаунты	← Comptes	← Cuentas	→ الحسابات	← 账户	← Konti
+All data (JSON)	Все данные (JSON)	Toutes les données (JSON)	Todos los datos (JSON)	كل البيانات (JSON)	全部数据（JSON）	Amakuru yose (JSON)
+This is your own account. You can change everything here or on	Это ваш аккаунт. Всё можно изменить здесь или на	C'est votre propre compte. Vous pouvez tout changer ici ou sur	Esta es tu propia cuenta. Puedes cambiarlo todo aquí o en	هذا حسابك. يمكنك تغيير كل شيء هنا أو في	这是您自己的账户。可以在此处或在	Iyi ni konti yawe. Ushobora guhindura byose hano cyangwa kuri
+your profile page	странице профиля	votre page de profil	tu página de perfil	صفحة ملفك الشخصي	个人资料页面修改	urupapuro rwa profili yawe
+Reminders	Напоминания	Rappels	Recordatorios	التذكيرات	提醒	Kwibutsa
+Send notifications by email	Отправлять уведомления на email	Envoyer les notifications par e-mail	Enviar notificaciones por correo	أرسل الإشعارات بالبريد	通过邮件发送通知	Ohereza amamenyesha kuri imeyili
+Password and sign in	Пароль и вход	Mot de passe et connexion	Contraseña e inicio de sesión	كلمة المرور وتسجيل الدخول	密码与登录	Ijambo ry'ibanga no kwinjira
+Repeat it	Повторите	Répétez-le	Repítela	أعدها	再次输入	Ryongere
+Set new password	Задать новый пароль	Définir un nouveau mot de passe	Poner contraseña nueva	عيّن كلمة مرور جديدة	设置新密码	Shyiraho ijambo ry'ibanga rishya
+Email a reset link	Отправить ссылку для сброса	Envoyer un lien de réinitialisation	Enviar enlace para restablecer	أرسل رابط إعادة التعيين	发送重置链接	Ohereza ihuza ryo guhindura
+Turn off two-factor login	Выключить двухфакторный вход	Désactiver la double authentification	Desactivar el acceso en dos pasos	أوقف الدخول بخطوتين	关闭两步登录	Funga kwinjira mu ntambwe ebyiri
+Turn off two-factor login for this account?	Выключить двухфакторный вход для этого аккаунта?	Désactiver la double authentification pour ce compte ?	¿Desactivar el acceso en dos pasos de esta cuenta?	إيقاف الدخول بخطوتين لهذا الحساب؟	关闭此账户的两步登录？	Gufunga kwinjira mu ntambwe ebyiri kuri iyi konti?
+Sign this person out on every device?	Завершить сеансы этого человека на всех устройствах?	Déconnecter cette personne sur tous ses appareils ?	¿Cerrar la sesión de esta persona en todos sus dispositivos?	تسجيل خروج هذا الشخص من كل الأجهزة؟	让此人在所有设备上退出？	Gusohora uyu muntu ku bikoresho byose?
+Access	Доступ	Accès	Acceso	الصلاحيات	权限	Uburenganzira
+Remove site administrator	Снять права администратора сайта	Retirer administrateur du site	Quitar administrador del sitio	أزل صلاحية مدير الموقع	取消网站管理员	Kuraho umuyobozi w'urubuga
+Make site administrator	Сделать администратором сайта	Nommer administrateur du site	Hacer administrador del sitio	اجعله مديرًا للموقع	设为网站管理员	Gira umuyobozi w'urubuga
+Turn the account off	Отключить аккаунт	Désactiver le compte	Desactivar la cuenta	عطّل الحساب	停用账户	Funga konti
+Turn the account on	Включить аккаунт	Réactiver le compte	Activar la cuenta	فعّل الحساب	启用账户	Fungura konti
+Add to workspace	Добавить в пространство	Ajouter à l'espace	Añadir al espacio	أضف إلى مساحة العمل	加入工作区	Ongera ahakorerwa
+Not in any workspace.	Ни в одном пространстве.	Dans aucun espace.	En ningún espacio.	ليس في أي مساحة عمل.	不在任何工作区。	Ntari ahakorerwa na hamwe.
+Remove from this workspace? Their tasks there become unassigned.	Убрать из пространства? Его задачи там останутся без исполнителя.	Retirer de cet espace ? Ses tâches y deviennent non assignées.	¿Quitar de este espacio? Sus tareas allí quedarán sin asignar.	إزالته من مساحة العمل هذه؟ ستصبح مهامه هناك بلا مسؤول.	从此工作区移除？其在该处的任务将变为未分配。	Kumukura aha hakorerwa? Imirimo ye aho izaba idafite uyishinzwe.
+No resumes.	Резюме нет.	Aucun CV.	Sin currículums.	لا سير ذاتية.	没有简历。	Nta CV.
+Manage resumes	Управлять резюме	Gérer les CV	Gestionar currículums	إدارة السير الذاتية	管理简历	Genzura CV
+Delete this account	Удалить этот аккаунт	Supprimer ce compte	Eliminar esta cuenta	احذف هذا الحساب	删除此账户	Siba iyi konti
+The account, its notifications and resumes are deleted. Tasks stay in the workspaces and become unassigned.	Аккаунт, его уведомления и резюме удаляются. Задачи остаются в пространствах без исполнителя.	Le compte, ses notifications et ses CV sont supprimés. Les tâches restent dans les espaces, non assignées.	Se eliminan la cuenta, sus notificaciones y currículums. Las tareas quedan en los espacios sin asignar.	يُحذف الحساب وإشعاراته وسيره الذاتية. تبقى المهام في مساحات العمل بلا مسؤول.	账户及其通知和简历将被删除。任务留在工作区中并变为未分配。	Konti, amamenyesha yayo na CV birasibwa. Imirimo iguma ahakorerwa idafite uyishinzwe.
+Type the email to confirm	Введите email для подтверждения	Tapez l'e-mail pour confirmer	Escribe el correo para confirmar	اكتب البريد للتأكيد	输入邮箱以确认	Andika imeyili wemeze
+Email to confirm	Email для подтверждения	E-mail de confirmation	Correo para confirmar	البريد للتأكيد	用于确认的邮箱	Imeyili yo kwemeza
+Workspaces on the site: {0}. Open one to change its members, settings or data.	Пространств на сайте: {0}. Откройте любое, чтобы изменить участников, настройки или данные.	Espaces sur le site : {0}. Ouvrez-en un pour changer ses membres, réglages ou données.	Espacios en el sitio: {0}. Abre uno para cambiar sus miembros, ajustes o datos.	مساحات العمل في الموقع: {0}. افتح واحدة لتغيير أعضائها أو إعداداتها أو بياناتها.	网站工作区：{0}。打开一个即可修改成员、设置或数据。	Ahakorerwa kuri uru rubuga: {0}. Fungura hamwe uhindure abanyamuryango, igenamiterere cyangwa amakuru.
+Owner	Владелец	Propriétaire	Propietario	المالك	所有者	Nyirabyo
+In trash	В корзине	À la corbeille	En la papelera	في السلة	回收站中	Mu myanda
+{0} KB	{0} КБ	{0} Ko	{0} KB	{0} ك.ب	{0} KB	{0} KB
+You become the admin of the new workspace.	Вы станете администратором нового пространства.	Vous devenez administrateur du nouvel espace.	Serás el administrador del nuevo espacio.	ستصبح مشرف مساحة العمل الجديدة.	您将成为新工作区的管理员。	Uzaba umuyobozi w'aha hakorerwa hashya.
+Create	Создать	Créer	Crear	إنشاء	创建	Kora
+← Workspaces	← Пространства	← Espaces	← Espacios	→ مساحات العمل	← 工作区	← Ahakorerwa
+{0} members · {1} projects · {2} tasks · {3} in the trash	{0} участников · {1} проектов · {2} задач · {3} в корзине	{0} membres · {1} projets · {2} tâches · {3} à la corbeille	{0} miembros · {1} proyectos · {2} tareas · {3} en la papelera	{0} أعضاء · {1} مشاريع · {2} مهام · {3} في السلة	{0} 名成员 · {1} 个项目 · {2} 个任务 · 回收站 {3} 个	Abanyamuryango {0} · imishinga {1} · imirimo {2} · {3} mu myanda
+Export (JSON)	Экспорт (JSON)	Exporter (JSON)	Exportar (JSON)	تصدير (JSON)	导出（JSON）	Ohereza hanze (JSON)
+Open workspace	Открыть пространство	Ouvrir l'espace	Abrir espacio	افتح مساحة العمل	打开工作区	Fungura ahakorerwa
+Settings	Настройки	Paramètres	Ajustes	الإعدادات	设置	Igenamiterere
+Default priority of new tasks	Приоритет новых задач по умолчанию	Priorité par défaut des nouvelles tâches	Prioridad por defecto de tareas nuevas	الأولوية الافتراضية للمهام الجديدة	新任务的默认优先级	Icyihutirwa gisanzwe cy'imirimo mishya
+Add a member	Добавить участника	Ajouter un membre	Añadir un miembro	أضف عضوًا	添加成员	Ongeramo umunyamuryango
+Email of an account	Email аккаунта	E-mail d'un compte	Correo de una cuenta	بريد أحد الحسابات	账户邮箱	Imeyili ya konti
+Remove this person from the workspace?	Убрать этого человека из пространства?	Retirer cette personne de l'espace ?	¿Quitar a esta persona del espacio?	إزالة هذا الشخص من مساحة العمل؟	将此人移出工作区？	Gukura uyu muntu aha hakorerwa?
+No projects.	Проектов нет.	Aucun projet.	Sin proyectos.	لا مشاريع.	没有项目。	Nta mishinga.
+No sprints.	Спринтов нет.	Aucun sprint.	Sin sprints.	لا سباقات.	没有冲刺。	Nta sprint.
+No labels.	Меток нет.	Aucune étiquette.	Sin etiquetas.	لا تصنيفات.	没有标签。	Nta birango.
+All projects, tasks, comments, files, time and sprints of this workspace are deleted. The accounts are kept.	Удаляются все проекты, задачи, комментарии, файлы, время и спринты этого пространства. Аккаунты сохраняются.	Tous les projets, tâches, commentaires, fichiers, temps et sprints de cet espace sont supprimés. Les comptes sont gardés.	Se eliminan todos los proyectos, tareas, comentarios, archivos, tiempo y sprints de este espacio. Las cuentas se conservan.	تُحذف كل مشاريع ومهام وتعليقات وملفات ووقت وسباقات مساحة العمل هذه. تبقى الحسابات.	此工作区的所有项目、任务、评论、文件、工时和冲刺都会被删除。账户会保留。	Imishinga yose, imirimo, ibitekerezo, amadosiye, igihe n'amasprint by'aha hakorerwa birasibwa. Konti zirabikwa.
+Workspace name to confirm	Название пространства для подтверждения	Nom de l'espace pour confirmer	Nombre del espacio para confirmar	اسم مساحة العمل للتأكيد	输入工作区名称以确认	Izina ry'ahakorerwa ryo kwemeza
+Resumes on the site: {0}. You can hide a resume or delete it.	Резюме на сайте: {0}. Можно скрыть резюме или удалить его.	CV sur le site : {0}. Vous pouvez masquer ou supprimer un CV.	Currículums en el sitio: {0}. Puedes ocultar o eliminar uno.	السير الذاتية في الموقع: {0}. يمكنك إخفاء سيرة أو حذفها.	网站简历：{0}。可以隐藏或删除简历。	CV ziri ku rubuga: {0}. Ushobora guhisha CV cyangwa kuyisiba.
+Resume	Резюме	CV	Currículum	السيرة الذاتية	简历	CV
+Views	Просмотры	Vues	Visitas	المشاهدات	浏览量	Byarebwe
+Updated	Обновлено	Mis à jour	Actualizado	آخر تحديث	更新于	Byavuguruwe
+Delete this resume for good?	Удалить это резюме навсегда?	Supprimer définitivement ce CV ?	¿Eliminar este currículum para siempre?	حذف هذه السيرة نهائيًا؟	永久删除此简历？	Gusiba iyi CV burundu?
+No resumes yet.	Резюме пока нет.	Pas encore de CV.	Aún no hay currículums.	لا سير ذاتية بعد.	暂无简历。	Nta CV irabaho.
+Built-in texts: {0} · changed by you: {1} · shown: {2} (at most 60; search to find others)	Встроенных текстов: {0} · изменено вами: {1} · показано: {2} (не больше 60; ищите остальные поиском)	Textes intégrés : {0} · modifiés par vous : {1} · affichés : {2} (60 au plus ; cherchez pour trouver les autres)	Textos incluidos: {0} · cambiados por ti: {1} · mostrados: {2} (como máximo 60; busca para ver otros)	النصوص المدمجة: {0} · عدّلتها: {1} · المعروضة: {2} (60 كحد أقصى؛ ابحث لتجد غيرها)	内置文本：{0} · 您修改的：{1} · 显示：{2}（最多 60 条，可搜索其他）	Inyandiko zisanzwe: {0} · wahinduye: {1} · zigaragara: {2} (60 gusa; shakisha izindi)
+Change any word of the interface. Your text wins over the built-in translation. Leave the box empty to use the built-in text again.	Меняйте любое слово интерфейса. Ваш текст важнее встроенного перевода. Оставьте поле пустым, чтобы вернуть встроенный текст.	Changez n'importe quel mot de l'interface. Votre texte l'emporte sur la traduction intégrée. Laissez la case vide pour revenir au texte intégré.	Cambia cualquier palabra de la interfaz. Tu texto gana a la traducción incluida. Deja la casilla vacía para volver al texto incluido.	غيّر أي كلمة في الواجهة. نصك يتقدّم على الترجمة المدمجة. اترك الحقل فارغًا لاستخدام النص المدمج مجددًا.	可修改界面上的任何文字。您的文本优先于内置翻译。留空即恢复内置文本。	Hindura ijambo iryo ari ryo ryose ry'urubuga. Inyandiko yawe iruta ubusobanuro busanzwe. Siga ubusa kugira ngo ugarure busanzwe.
+Find a word or sentence…	Найти слово или фразу…	Chercher un mot ou une phrase…	Buscar una palabra o frase…	ابحث عن كلمة أو جملة…	查找词语或句子…	Shakisha ijambo cyangwa interuro…
+All texts	Все тексты	Tous les textes	Todos los textos	كل النصوص	全部文本	Inyandiko zose
+Only texts I changed	Только изменённые мной	Seulement mes modifications	Solo los que cambié	النصوص التي عدّلتها فقط	仅我修改的	Izo nahinduye gusa
+English	Английский	Anglais	Inglés	الإنجليزية	英语	Icyongereza
+Your text	Ваш текст	Votre texte	Tu texto	نصك	您的文本	Inyandiko yawe
+Every email, Slack, Telegram and push message the site made, and what happened to it. Demo addresses (.demo, .example) are never sent.	Все письма, сообщения Slack, Telegram и push, созданные сайтом, и что с ними стало. На демо-адреса (.demo, .example) ничего не отправляется.	Chaque e-mail, message Slack, Telegram et push créé par le site, et ce qu'il est devenu. Les adresses de démo (.demo, .example) ne reçoivent jamais rien.	Cada correo, mensaje de Slack, Telegram y push que creó el sitio, y qué pasó con él. A las direcciones demo (.demo, .example) nunca se envía nada.	كل رسالة بريد وSlack وTelegram وإشعار فوري أنشأها الموقع وما حدث لها. لا يُرسل شيء إلى العناوين التجريبية (.demo و.example).	网站生成的每封邮件、Slack、Telegram 和推送消息及其结果。演示地址（.demo、.example）从不发送。	Buri imeyili, ubutumwa bwa Slack, Telegram n'amamenyesha urubuga rwakoze, n'ibyabubayeho. Aderesi z'igerageza (.demo, .example) ntizoherezwa.
+Not set up: add BREVO_API_KEY or SMTP_HOST to the server secrets.	Не настроено: добавьте BREVO_API_KEY или SMTP_HOST в секреты сервера.	Non configuré : ajoutez BREVO_API_KEY ou SMTP_HOST aux secrets du serveur.	Sin configurar: añade BREVO_API_KEY o SMTP_HOST a los secretos del servidor.	غير مضبوط: أضف BREVO_API_KEY أو SMTP_HOST إلى أسرار الخادم.	未设置：在服务器密钥中添加 BREVO_API_KEY 或 SMTP_HOST。	Ntibirashyirwaho: ongera BREVO_API_KEY cyangwa SMTP_HOST muri secrets za seriveri.
+The bot can post to workspace chats.	Бот может писать в чаты пространств.	Le bot peut publier dans les discussions des espaces.	El bot puede publicar en los chats de los espacios.	يمكن للروبوت النشر في دردشات مساحات العمل.	机器人可以向工作区聊天发消息。	Bot ishobora kohereza mu biganiro by'ahakorerwa.
+Add TELEGRAM_BOT_TOKEN to the server secrets.	Добавьте TELEGRAM_BOT_TOKEN в секреты сервера.	Ajoutez TELEGRAM_BOT_TOKEN aux secrets du serveur.	Añade TELEGRAM_BOT_TOKEN a los secretos del servidor.	أضف TELEGRAM_BOT_TOKEN إلى أسرار الخادم.	在服务器密钥中添加 TELEGRAM_BOT_TOKEN。	Ongera TELEGRAM_BOT_TOKEN muri secrets za seriveri.
+Each workspace admin adds a Slack webhook in Workspace settings.	Администратор каждого пространства добавляет вебхук Slack в настройках пространства.	Chaque administrateur d'espace ajoute un webhook Slack dans les paramètres de l'espace.	Cada administrador de espacio añade un webhook de Slack en los ajustes del espacio.	يضيف مشرف كل مساحة عمل رابط Slack في إعدادات مساحة العمل.	各工作区管理员在工作区设置中添加 Slack Webhook。	Umuyobozi wa buri hakorerwa yongeramo webhook ya Slack mu igenamiterere ry'ahakorerwa.
+Ready	Готово	Prêt	Listo	جاهز	就绪	Biteguye
+Push notifications	Push-уведомления	Notifications push	Notificaciones push	الإشعارات الفورية	推送通知	Amamenyesha ako kanya
+Built in. Keys are made by the site.	Встроено. Ключи создаёт сам сайт.	Intégré. Les clés sont créées par le site.	Incluido. Las claves las crea el sitio.	مدمج. ينشئ الموقع المفاتيح.	内置。密钥由网站生成。	Biri mo. Imfunguzo zikorwa n'urubuga.
+Send a test email	Отправить тестовое письмо	Envoyer un e-mail de test	Enviar un correo de prueba	أرسل رسالة تجريبية	发送测试邮件	Ohereza imeyili y'igerageza
+Email address	Адрес email	Adresse e-mail	Dirección de correo	عنوان البريد	邮箱地址	Aderesi ya imeyili
+Send test	Отправить тест	Envoyer le test	Enviar prueba	أرسل التجربة	发送测试	Ohereza igerageza
+The result is shown in the list below.	Результат появится в списке ниже.	Le résultat s'affiche dans la liste ci-dessous.	El resultado aparece en la lista de abajo.	تظهر النتيجة في القائمة أدناه.	结果会显示在下方列表中。	Igisubizo kigaragara ku rutonde hepfo.
+Push	Push	Push	Push	فوري	推送	Ako kanya
+When	Когда	Quand	Cuándo	متى	时间	Ryari
+Channel	Канал	Canal	Canal	القناة	渠道	Inzira
+To	Кому	À	Para	إلى	收件人	Kuri
+Subject	Тема	Objet	Asunto	الموضوع	主题	Insanganyamatsiko
+Result	Результат	Résultat	Resultado	النتيجة	结果	Igisubizo
+No messages yet.	Сообщений пока нет.	Pas encore de messages.	Aún no hay mensajes.	لا رسائل بعد.	暂无消息。	Nta butumwa buraboneka.
+Who did what on the whole site, newest first (last 300).	Кто что сделал на всём сайте, сначала новое (последние 300).	Qui a fait quoi sur tout le site, du plus récent (300 derniers).	Quién hizo qué en todo el sitio, lo más reciente primero (últimos 300).	من فعل ماذا في الموقع كله، الأحدث أولًا (آخر 300).	全站谁做了什么，最新的在前（最近 300 条）。	Ni nde wakoze iki ku rubuga rwose, ibishya mbere (300 bya nyuma).
+Person, action or details…	Человек, действие или детали…	Personne, action ou détails…	Persona, acción o detalles…	الشخص أو الإجراء أو التفاصيل…	人员、操作或详情…	Umuntu, igikorwa cyangwa ibisobanuro…
+Action	Действие	Action	Acción	الإجراء	操作	Igikorwa
+Details	Детали	Détails	Detalles	التفاصيل	详情	Ibisobanuro
+sent	отправлено	envoyé	enviado	أُرسلت	已发送	byoherejwe
+not sent: demo or test address	не отправлено: демо- или тестовый адрес	non envoyé : adresse de démo ou de test	no enviado: dirección demo o de prueba	لم تُرسل: عنوان تجريبي	未发送：演示或测试地址	ntibyoherejwe: aderesi y'igerageza
+not sent: no email service	не отправлено: нет почтового сервиса	non envoyé : pas de service d'e-mail	no enviado: sin servicio de correo	لم تُرسل: لا توجد خدمة بريد	未发送：没有邮件服务	ntibyoherejwe: nta serivisi ya imeyili
+We are making the site better	Мы улучшаем сайт	Nous améliorons le site	Estamos mejorando el sitio	نحن نحسّن الموقع	我们正在改进网站	Turimo kunoza urubuga
+The site is closed for a short time. Please come back soon.	Сайт ненадолго закрыт. Пожалуйста, зайдите позже.	Le site est fermé pour peu de temps. Revenez bientôt.	El sitio está cerrado por poco tiempo. Vuelve pronto.	الموقع مغلق لفترة قصيرة. عد قريبًا.	网站暂时关闭，请稍后再来。	Urubuga rufunze akanya gato. Garuka vuba.
+Administrator sign in	Вход для администратора	Connexion administrateur	Acceso de administrador	دخول المدير	管理员登录	Kwinjira k'umuyobozi
+Maintenance mode is on: only site administrators can use the site.	Режим обслуживания включён: сайтом могут пользоваться только администраторы сайта.	Le mode maintenance est activé : seuls les administrateurs du site peuvent l'utiliser.	El modo mantenimiento está activo: solo los administradores del sitio pueden usarlo.	وضع الصيانة مفعّل: يمكن لمديري الموقع فقط استخدامه.	维护模式已开启：只有网站管理员可以使用网站。	Uburyo bwo kuvugurura burafunguye: abayobozi b'urubuga bonyine ni bo barukoresha.
+Guest (site admin)	Гость (администратор сайта)	Invité (admin du site)	Invitado (admin del sitio)	ضيف (مدير الموقع)	访客（网站管理员）	Umushyitsi (umuyobozi w'urubuga)

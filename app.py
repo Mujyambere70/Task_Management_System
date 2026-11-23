@@ -6,6 +6,10 @@ Run:   pip install -r requirements.txt
 Demo:  admin@taskflow.demo / Admin@1234   (more users in README)
 
 Database: SQLite file taskflow.db on your computer, or PostgreSQL when DATABASE_URL is set (online).
+
+Version 3: sprints, Gantt chart, labels, dependencies, recurring tasks, search, trash, iCal feed, Slack / Telegram,
+Web Push, suggested estimates, resume PDF; and a back office where the site administrator manages everything
+(planning_views.py, admin_views.py).
 """
 
 import calendar
@@ -15,7 +19,6 @@ import io
 import json
 import os
 import secrets
-import time
 from datetime import date, datetime, timedelta
 from functools import wraps
 from urllib.parse import urlparse
@@ -28,10 +31,11 @@ import i18n
 import otp
 import world
 from core import TaskError, fmt_minutes, parse_duration
-from store import COLORS, PRIORITIES, PRIORITY_NAMES, STATUS_NAMES, STATUSES, LIVE_SIGNAL, Store
+from store import COLORS, PRIORITIES, PRIORITY_NAMES, REPEATS, STATUS_NAMES, STATUSES, LIVE_SIGNAL, Store
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DEVELOPER = {"name": "Jean Michel Mujyambere", "github": "https://github.com/Mujyambere70"}
+VERSION = "3.0"
 
 
 def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=None, env=None):
@@ -47,10 +51,12 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=env.get("SECURE_COOKIES") == "1",
         PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
-        MAX_CONTENT_LENGTH=6 * 1024 * 1024,
+        MAX_CONTENT_LENGTH=21 * 1024 * 1024,              # the real file limit is a site setting (1-20 MB)
         JOBS=not testing and env.get("RUN_JOBS", "1") != "0",
         APP_URL=env.get("APP_URL", "").rstrip("/"),
     )
+    i18n.overrides_source = store.ui_overrides          # words changed in Admin -> Translations
+    i18n.clear_overrides()
     if seed and store.count_users() == 0:
         from demo_data import load_demo
         load_demo(store)
@@ -103,6 +109,7 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
         session["uid"] = u["id"]
         session["csrf"] = secrets.token_hex(16)
         session["lang"] = u.get("lang") or "en"
+        session["sv"] = u.get("session_ver") or 1
         session.permanent = bool(remember)
 
     # ------------------------------------------------------------ every request
@@ -110,25 +117,39 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
     def load_user_and_check_csrf():
         g.user, g.ws, g.workspace = None, None, None
         u = store.user(session["uid"]) if "uid" in session else None
-        if u and not u["active"]:
-            session.clear()
+        if u and (not u["active"] or session.get("sv", 1) != (u.get("session_ver") or 1)):
+            session.clear()                          # switched off, or signed out on every device / new password
             u = None
-        lang = session.get("lang") or (u["lang"] if u else None) or world.best_language(
-            [x for x, _ in request.accept_languages])
+        g.site = site = store.site()
+        enabled = site["langs_enabled"].split(",")
+        lang = session.get("lang") or (u["lang"] if u else None)
+        if not lang:                                 # the first browser language we have, else the site's choice
+            lang = next((x[:2].lower() for x, _ in request.accept_languages if x[:2].lower() in enabled),
+                        site["default_lang"])
+        if lang not in enabled:
+            lang = site["default_lang"]
         world.set_lang(lang)
         g.lang = world.current_lang()
         if u:
-            ws = store.choose_workspace(u["id"], session.get("ws"))
+            wanted = session.get("ws")
+            if u["role"] == "admin" and wanted and not store.member_role(wanted, u["id"]) and store.workspace(wanted):
+                ws = wanted                          # the site administrator may open any workspace
+            else:
+                ws = store.choose_workspace(u["id"], wanted)
             session["ws"] = ws
             g.ws = ws
             g.workspace = store.workspace(ws)
-            g.user = dict(u, site_admin=u["role"] == "admin", role=store.member_role(ws, u["id"]) or "member")
+            role = store.member_role(ws, u["id"]) or ("admin" if u["role"] == "admin" else "member")
+            g.user = dict(u, site_admin=u["role"] == "admin", role=role, guest_admin=not store.member_role(ws, u["id"]))
         if "csrf" not in session:
             session["csrf"] = secrets.token_hex(16)
         if request.method == "POST" and request.endpoint not in ("cron_run",):
             token = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token")
             if not token or not secrets.compare_digest(token, session["csrf"]):
                 abort(400, "Your session expired. Please reload the page and try again.")
+        if site["maintenance"] and not (g.user and g.user["site_admin"]) and request.endpoint not in (
+                "static", "login", "login_verify", "logout", "set_language", "manifest", "service_worker", "brand_logo"):
+            return render_template("maintenance.html"), 503
         if app.config["JOBS"] and request.endpoint not in ("static", "live_socket"):
             try:
                 store.housekeeping()
@@ -158,6 +179,8 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
             now_hour=datetime.now().hour, can_edit=lambda t: u and store.can_edit(u, t),
             can_delete=lambda t: u and store.can_delete(u, t), can_manage=lambda p: u and store.can_manage_project(u, p),
             nav_projects=store.projects(g.ws) if u else [], settings=store.settings(), workspace=g.get("workspace"),
+            CFG=g.get("site") or store.site(), VERSION=VERSION,
+            LANGS_ON={k: v for k, v in world.LANGUAGES.items() if k in (g.get("site") or store.site())["langs_enabled"].split(",")},
             my_workspaces=store.memberships(u["id"]) if u else [], unseen=store.unseen_count(u["id"]) if u else 0,
             timer=store.running_timer(u["id"]) if u else None, LANGUAGES=world.LANGUAGES, lang=g.get("lang", "en"),
             DEVELOPER=DEVELOPER, fmt_date=world.fmt_date, server_now=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -228,7 +251,7 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
     # ------------------------------------------------------------ language
     @app.route("/lang/<code>")
     def set_language(code):
-        if code in world.LANGUAGES:
+        if code in world.LANGUAGES and code in g.site["langs_enabled"].split(","):
             session["lang"] = code
             if g.user:
                 store.set_language(g.user["id"], code)
@@ -296,7 +319,7 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
             return redirect(url_for("dashboard"))
         invite = request.values.get("invite", "")
         joining = store.workspace_by_invite(invite) if invite else None
-        if store.settings()["allow_registration"] != "1" and store.count_users() > 0 and not joining:
+        if store.site("allow_registration") != "1" and store.count_users() > 0 and not joining:
             flash("New sign-ups are turned off. Please ask your admin to add you.", "error")
             return redirect(url_for("login"))
         if request.method == "POST":
@@ -353,6 +376,9 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
     def workspaces():
         if request.method == "POST":
             try:
+                made = sum(1 for m in store.memberships(g.user["id"]) if m["created_by"] == g.user["id"])
+                if made >= store.site_int("max_workspaces") and not g.user["site_admin"]:
+                    raise TaskError("You have made the most workspaces allowed. Ask the site administrator.")
                 ws = store.create_workspace(g.user["id"], request.form.get("name"), request.form.get("description"),
                                             request.form.get("color"))
                 session["ws"] = ws
@@ -365,7 +391,7 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
     @app.route("/workspaces/<int:ws>/open", methods=["POST"])
     @login_required
     def workspace_switch(ws):
-        if not store.member_role(ws, g.user["id"]):
+        if not store.member_role(ws, g.user["id"]) and not (g.user["site_admin"] and store.workspace(ws)):
             abort(403)
         session["ws"] = ws
         store.remember_workspace(g.user["id"], ws)
@@ -385,6 +411,9 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
                     session.pop("ws", None)
                     flash("Workspace deleted.", "success")
                     return redirect(url_for("workspaces"))
+                elif f.get("action") == "chat":
+                    store.save_chat_settings(g.user["id"], g.ws, f.get("slack_url"), f.get("telegram_chat"))
+                    flash("Chat messages saved.", "success")
                 elif f.get("action") == "clean_tasks":
                     days = int(f["days"]) if f.get("days", "").isdigit() else 30
                     n = store.delete_completed_tasks(g.user["id"], g.ws, days)
@@ -397,7 +426,8 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
                 flash(str(e), "error")
             return redirect(url_for("workspace_settings"))
         invite_link = base_url() + "join/" + g.workspace["invite_code"]
-        return render_template("workspace_settings.html", invite_link=invite_link)
+        return render_template("workspace_settings.html", invite_link=invite_link,
+                               telegram_ready=bool(env.get("TELEGRAM_BOT_TOKEN")))
 
     @app.route("/join/<code>", methods=["GET", "POST"])
     def join(code):
@@ -451,9 +481,11 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
         a = request.args
         tasks = store.tasks(g.ws, q=a.get("q", ""), assignee=a.get("assignee", ""), project=a.get("project", ""),
                             priority=a.get("priority", ""), sort="priority")
+        tasks = filter_v3(tasks, a)
         columns = {key: [t for t in tasks if t["status"] == key] for key, _ in STATUSES}
         return render_template("board.html", columns=columns, users=store.users(g.ws, active_only=True),
-                               projects=store.projects(g.ws), args=a)
+                               projects=store.projects(g.ws), args=a, labels=store.labels(g.ws),
+                               sprints=store.sprints(g.ws), tlabels=store.task_labels([t["id"] for t in tasks]))
 
     @app.route("/api/tasks/<int:task_id>/status", methods=["POST"])
     @login_required
@@ -521,7 +553,21 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
         tasks = store.tasks(g.ws, q=a.get("q", "").strip(), status=a.get("status", ""), priority=a.get("priority", ""),
                             assignee=a.get("assignee", ""), project=a.get("project", ""), due=a.get("due", ""),
                             sort=a.get("sort", "due"), creator=a.get("creator", ""))
-        return render_template("tasks.html", tasks=tasks, users=store.users(g.ws), projects=store.projects(g.ws), args=a)
+        tasks = filter_v3(tasks, a)
+        return render_template("tasks.html", tasks=tasks, users=store.users(g.ws), projects=store.projects(g.ws), args=a,
+                               labels=store.labels(g.ws), sprints=store.sprints(g.ws),
+                               tlabels=store.task_labels([t["id"] for t in tasks]))
+
+    def filter_v3(tasks, a):
+        """Version 3 filters: label and sprint."""
+        if a.get("label", "").isdigit():
+            keep = store.tasks_with_label(g.ws, int(a["label"]))
+            tasks = [t for t in tasks if t["id"] in keep]
+        if a.get("sprint") == "none":
+            tasks = [t for t in tasks if not t["sprint_id"]]
+        elif a.get("sprint", "").isdigit():
+            tasks = [t for t in tasks if t["sprint_id"] == int(a["sprint"])]
+        return tasks
 
     @app.route("/my-tasks")
     @login_required
@@ -530,26 +576,43 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
 
     def form_from_task(t):
         form = {k: ("" if t[k] is None else str(t[k])) for k in
-                ("title", "description", "status", "priority", "assignee_id", "project_id", "due_date")}
-        form["estimate"] = fmt_minutes(t["estimate_minutes"]) if t["estimate_minutes"] else ""
+                ("title", "description", "status", "priority", "assignee_id", "project_id", "due_date", "start_date",
+                 "sprint_id", "repeat")}
+        form["estimate"] = fmt_minutes(t["estimate_minutes"], "en") if t["estimate_minutes"] else ""
+        form["labels"] = [str(lb["id"]) for lb in store.task_labels([t["id"]])[t["id"]]]
         return form
+
+    def task_form_data():
+        """The form as a dict; the labels are a list (several checkboxes with the same name)."""
+        data = request.form.to_dict()
+        if "labels_sent" in request.form:
+            data["labels"] = request.form.getlist("labels")
+        return data
+
+    def task_form_page(form, task):
+        return render_template("task_form.html", form=form, task=task, users=store.users(g.ws, active_only=True),
+                               projects=store.projects(g.ws), labels=store.labels(g.ws),
+                               sprints=[s for s in store.sprints(g.ws) if s["status"] != "closed"])
 
     @app.route("/tasks/new", methods=["GET", "POST"])
     @login_required
     def task_new():
         if request.method == "POST":
+            data = task_form_data()
             try:
-                tid = store.create_task(g.user["id"], g.ws, request.form)
+                tid = store.create_task(g.user["id"], g.ws, data)
                 flash("Task created.", "success")
                 return redirect(url_for("task_detail", task_id=tid))
             except TaskError as e:
                 flash(str(e), "error")
-                form = request.form
+                form = data
         else:
+            active = next((s for s in store.sprints(g.ws) if s["status"] == "active"), None)
             form = {"status": request.args.get("status", "todo"), "project_id": request.args.get("project", ""),
-                    "assignee_id": str(g.user["id"]), "priority": g.workspace["default_priority"]}
-        return render_template("task_form.html", form=form, task=None,
-                               users=store.users(g.ws, active_only=True), projects=store.projects(g.ws))
+                    "assignee_id": str(g.user["id"]), "priority": g.workspace["default_priority"],
+                    "sprint_id": request.args.get("sprint", str(active["id"]) if active else ""),
+                    "labels": request.args.getlist("label")}
+        return task_form_page(form, None)
 
     @app.route("/tasks/<int:task_id>")
     @login_required
@@ -562,10 +625,17 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
                 store.remember_workspace(g.user["id"], other["workspace_id"])
                 return redirect(request.full_path if request.query_string else request.path)
             abort(404)
+        suggestion = None
+        if t["status"] != "done" and not t["estimate_minutes"]:
+            suggestion = store.suggest_estimate(g.ws, t["title"], t["project_id"], exclude=task_id)
         return render_template("task_detail.html", t=t, comments=store.comments(task_id),
                                subtasks=store.subtasks(task_id), history=store.activity(g.ws, 30, task_id=task_id),
                                files=store.attachments(task_id), entries=store.time_entries(task_id),
-                               members=store.users(g.ws, active_only=True))
+                               members=store.users(g.ws, active_only=True), labels=store.task_labels([task_id])[task_id],
+                               blockers=store.blockers(task_id), blocking=store.blocking(task_id),
+                               candidates=[x for x in store.tasks(g.ws, sort="title") if x["id"] != task_id],
+                               sprint=store.sprint(t["sprint_id"], g.ws) if t["sprint_id"] else None,
+                               suggestion=suggestion, REPEATS=REPEATS)
 
     # ----- checklist inside a task (anyone who can edit the task)
     def editable_task(task_id):
@@ -616,15 +686,15 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
         t = editable_task(task_id)
         form = form_from_task(t)
         if request.method == "POST":
+            data = task_form_data()
             try:
-                store.update_task(g.user["id"], g.ws, task_id, request.form)
+                store.update_task(g.user["id"], g.ws, task_id, data)
                 flash("Task updated.", "success")
                 return redirect(url_for("task_detail", task_id=task_id))
             except TaskError as e:
                 flash(str(e), "error")
-                form = request.form
-        return render_template("task_form.html", form=form, task=t,
-                               users=store.users(g.ws, active_only=True), projects=store.projects(g.ws))
+                form = data
+        return task_form_page(form, t)
 
     @app.route("/tasks/<int:task_id>/status", methods=["POST"])
     @login_required
@@ -645,7 +715,7 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
         if not store.can_delete(g.user, t):
             abort(403)
         store.delete_task(g.user["id"], g.ws, task_id)
-        flash(tr("Task “{0}” deleted.").replace("{0}", t["title"]), "success")
+        flash(tr("Task “{0}” was moved to the trash.").replace("{0}", t["title"]), "success")
         return redirect(url_for("task_list"))
 
     @app.route("/tasks/<int:task_id>/comment", methods=["POST"])
@@ -901,14 +971,17 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
                     "websockets": app.config["WEBSOCKETS"], "cron": bool(env.get("CRON_KEY")),
                     "app_url": env.get("APP_URL", "")}
         return render_template("admin.html", counts=store.table_counts(),
-                               table=table, cols=cols, rows=rows, total=total, tab=tab, services=services)
+                               table=table, cols=cols, rows=rows, total=total, tab=tab, services=services,
+                               section="overview")
 
-    @app.route("/admin/settings", methods=["POST"])
+    @app.route("/admin/settings", methods=["GET", "POST"])
     @site_admin_required
     def admin_settings():
-        store.save_site_settings(g.user["id"], request.form.get("allow_registration"))
-        flash("Settings saved.", "success")
-        return redirect(url_for("admin_panel", tab="site"))
+        """Version 2 address: the settings now live on /admin/site."""
+        if request.method == "POST":
+            store.save_site(g.user["id"], {"allow_registration": request.form.get("allow_registration", "")})
+            flash("Settings saved.", "success")
+        return redirect(url_for("admin_site"))
 
     @app.route("/admin/data/<table>.csv")
     @site_admin_required
@@ -927,14 +1000,14 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
     @app.route("/admin/backup.json.gz")
     @site_admin_required
     def admin_backup():
-        data = {"app": "TaskFlow", "version": 2, "created_at": datetime.now().isoformat(timespec="seconds"),
+        data = {"app": "TaskFlow", "version": 3, "created_at": datetime.now().isoformat(timespec="seconds"),
                 "tables": {}}
         with store.db() as con:
             for t in store.TABLES:
                 cur = con.execute(f"SELECT * FROM {t}")
                 keys = [c[0] for c in cur.description]
                 data["tables"][t] = [dict(zip(keys, list(r))) for r in cur.fetchall()
-                                     if not (t == "settings" and r[0] == "secret_key")]
+                                     if not (t == "settings" and r[0] in ("secret_key", "vapid"))]
         blob = gzip.compress(json.dumps(data, default=str).encode())
         return Response(blob, mimetype="application/gzip", headers={
             "Content-Disposition": f"attachment; filename=taskflow_backup_{date.today()}.json.gz"})
@@ -1088,7 +1161,25 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
                     return redirect(url_for("login"))
                 elif form == "notify":
                     store.save_notify_settings(uid, f.get("email"), f.get("remind_days"))
+                    with store.db() as con:
+                        con.execute("UPDATE users SET notify_push = ? WHERE id = ?", (1 if f.get("push") else 0, uid))
                     flash("Notification settings saved.", "success")
+                elif form == "photo":
+                    up = request.files.get("photo")
+                    store.set_photo(uid, uid, up.read() if up and up.filename else b"")
+                    flash("Photo saved." if up and up.filename else "Photo removed.", "success")
+                elif form == "photo_off":
+                    store.set_photo(uid, uid, b"")
+                    flash("Photo removed.", "success")
+                elif form == "sign_out_all":
+                    store.bump_session(uid)
+                    session.clear()
+                    flash("You were signed out on every device. Please sign in again.", "success")
+                    return redirect(url_for("login"))
+                elif form == "ical_new":
+                    store.ical_token(uid, renew=True)
+                    flash("A new calendar link was made. The old one does not work any more.", "success")
+                    return redirect(url_for("profile") + "#calendar")
                 elif form == "2fa_on":
                     secret = session.get("totp_setup")
                     if not secret:
@@ -1101,8 +1192,7 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
                     store.disable_2fa(uid, f.get("password"), f.get("code", ""))
                     flash("Two-factor login is OFF.", "success")
                 else:
-                    store.update_profile(uid, f.get("name"), f.get("email"), f.get("job_title"), f.get("color"),
-                                         f.get("lang"))
+                    store.save_person(uid, uid, f, own=True)
                     if f.get("lang") in world.LANGUAGES:
                         session["lang"] = f.get("lang")
                     flash("Profile saved.", "success")
@@ -1117,6 +1207,8 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
                     "uri": otp.uri(secret, g.user["email"], issuer="TaskFlow")}
         return render_template("profile.html", s=store.stats(g.ws, uid),
                                created=store.tasks(g.ws, creator=uid, sort="updated")[:8], totp=totp,
+                               ical_url=base_url() + "ical/" + store.ical_token(uid) + ".ics",
+                               push_count=store.push_count(uid),
                                my_projects=[p for p in store.projects(g.ws, include_archived=True)
                                             if p["created_by"] == uid])
 
@@ -1124,6 +1216,12 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
     @app.route("/about")
     def about():
         return render_template("about.html")
+
+    # ------------------------------------------------------------ version 3 pages
+    import admin_views
+    import planning_views
+    planning_views.register(app, store, login_required, admin_required, base_url, env)
+    admin_views.register(app, store, site_admin_required, base_url, env)
 
     # ------------------------------------------------------------ resumes
     import resume_views
@@ -1148,7 +1246,7 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
     @app.errorhandler(413)
     def too_big(e):
         return render_template("error.html", code=413, title="The file is too big",
-                               text="Files can be at most 5 MB."), 413
+                               text=tr("Files can be at most {0} MB.").replace("{0}", str(store.site_int("max_file_mb")))), 413
 
     return app
 

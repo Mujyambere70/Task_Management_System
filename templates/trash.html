@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Trash{% endblock %}
+{% block content %}
+{% set admin = user.role == 'admin' %}
+<div class="page-head"><div><h1>Trash</h1>
+  <p class="muted"><span>{{ 'Deleted tasks stay here for {0} days, then they are removed for good.'|tr|replace('{0}', days) }}</span> The person who made a task or an admin can restore it.</p></div></div>
+<section class="card">
+  {% if rows %}
+  <table class="table">
+    <thead><tr><th>Task</th><th>Project</th><th>Deleted</th><th>By</th><th></th></tr></thead>
+    <tbody>
+    {% for t in rows %}
+      <tr><td translate="no"><b>#{{ t.id }} {{ t.title }}</b></td><td translate="no">{{ t.project_name or '—' }}</td>
+        <td>{{ t.deleted_at|ago }}</td><td translate="no">{{ t.deleted_by_name or '—' }}</td>
+        <td class="row-actions">
+          {% if admin or t.created_by == user.id %}
+          <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="id" value="{{ t.id }}">
+            <button class="btn btn-light sm" name="action" value="restore">Restore</button></form>{% endif %}
+          {% if admin %}
+          <form method="post" data-confirm="Delete this task for good? Its comments, files and time are deleted too."><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="id" value="{{ t.id }}">
+            <button class="btn btn-danger-ghost sm" name="action" value="purge">Delete for good</button></form>{% endif %}
+        </td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">The trash is empty.</div>{% endif %}
+</section>
+{% endblock %}

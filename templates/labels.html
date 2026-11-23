@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Labels{% endblock %}
+{% block content %}
+{% set admin = user.role == 'admin' %}
+<div class="page-head">
+  <div><h1>Labels</h1><p class="muted">Labels group tasks across projects, for example “bug” or “customer”. Anyone can add a label; admins can change or delete them.</p></div>
+</div>
+<div class="grid-2">
+<section class="card">
+  <div class="card-head"><h2>Labels of this workspace</h2><span class="muted small">{{ labels|length }}</span></div>
+  <ul class="label-list">
+  {% for lb in labels %}
+    <li><span class="label-chip" style="--c: {{ lb.color }}" translate="no">{{ lb.name }}</span>
+      <a class="small" href="{{ url_for('task_list', label=lb.id) }}">{{ '{0} tasks'|tr|replace('{0}', lb.uses) }}</a>
+      {% if admin %}
+      <form method="post" class="label-edit"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="id" value="{{ lb.id }}">
+        <input name="name" value="{{ lb.name }}" maxlength="30" aria-label="Name" required><input type="color" name="color" value="{{ lb.color }}" aria-label="Colour">
+        <button class="btn btn-light sm">Save</button></form>
+      <form method="post" data-confirm="Delete this label? Tasks keep everything else."><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="id" value="{{ lb.id }}">
+        <button class="icon-btn sm" name="action" value="delete" title="Delete"><svg class="i"><use href="#i-trash"/></svg></button></form>
+      {% endif %}</li>
+  {% else %}<li class="empty small">No labels yet.</li>{% endfor %}
+  </ul>
+</section>
+<section class="card">
+  <div class="card-head"><h2>New label</h2></div>
+  <form method="post" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Name<input name="name" required maxlength="30" placeholder="e.g. bug"></label>
+    <label>Colour<input type="color" name="color" value="#6366f1"></label>
+    <button class="btn btn-primary"><svg class="i"><use href="#i-plus"/></svg> Add label</button>
+  </form>
+</section>
+</div>
+{% endblock %}

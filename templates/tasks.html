@@ -41,6 +41,15 @@
     <option value="">Any priority</option>
     {% for k, n in PRIORITIES %}<option value="{{ k }}" {{ 'selected' if args.get('priority') == k }}>{{ n }}</option>{% endfor %}
   </select>
+  {% if labels %}<select name="label">
+    <option value="">Any label</option>
+    {% for lb in labels %}<option value="{{ lb.id }}" {{ 'selected' if args.get('label') == lb.id|string }}>{{ lb.name }}</option>{% endfor %}
+  </select>{% endif %}
+  {% if sprints %}<select name="sprint">
+    <option value="">Any sprint</option>
+    <option value="none" {{ 'selected' if args.get('sprint') == 'none' }}>Backlog (no sprint)</option>
+    {% for sp in sprints %}<option value="{{ sp.id }}" {{ 'selected' if args.get('sprint') == sp.id|string }}>{{ sp.name }}</option>{% endfor %}
+  </select>{% endif %}
   <select name="due">
     <option value="">Any due date</option>
     <option value="overdue" {{ 'selected' if args.get('due') == 'overdue' }}>Overdue</option>

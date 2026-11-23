@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Sprints{% endblock %}
+{% block content %}
+{% set admin = user.role == 'admin' %}
+<div class="page-head">
+  <div><h1>Sprints</h1><p class="muted">Plan the work in short periods of one to four weeks. Only one sprint is active at a time.</p></div>
+  {% if admin %}<button class="btn btn-primary" data-open="sprintDialog"><svg class="i"><use href="#i-plus"/></svg> New sprint</button>{% endif %}
+</div>
+
+<div class="sprint-grid">
+  {% for s in sprints %}
+  <section class="card sprint-card st-{{ s.status }}">
+    <div class="proj-top"><span class="pill sp-{{ s.status }}">{{ STATES[s.status] }}</span>
+      <small class="muted">{{ s.start_date|nice_date }} – {{ s.end_date|nice_date }}</small></div>
+    <h2><a href="{{ url_for('sprint_page', sprint_id=s.id) }}" translate="no">{{ s.name }}</a></h2>
+    {% if s.goal %}<p class="muted" translate="no">{{ s.goal }}</p>{% endif %}
+    <div class="proj-stats"><span><b>{{ s.total }}</b> tasks</span><span><b>{{ s.done }}</b> done</span><span><b>{{ s.percent }}%</b></span></div>
+    <div class="progress"><i style="width:{{ s.percent }}%"></i></div>
+    <div class="proj-actions"><a class="btn btn-light sm" href="{{ url_for('sprint_page', sprint_id=s.id) }}">Open sprint</a>
+      <a class="btn btn-ghost sm" href="{{ url_for('board', sprint=s.id) }}">Board</a></div>
+  </section>
+  {% else %}
+  <div class="card empty">No sprints yet.{% if admin %} Make the first one with “New sprint”.{% else %} An admin can make one.{% endif %}</div>
+  {% endfor %}
+</div>
+
+<section class="card" id="velocity">
+  <div class="card-head"><h2>Velocity</h2>
+    <span class="muted small">{% if velocity.average is not none %}{{ 'Average of closed sprints: {0} tasks ({1} h)'|tr|replace('{0}', velocity.average)|replace('{1}', velocity.average_hours) }}{% else %}Close a sprint to see the average.{% endif %}</span></div>
+  {% if velocity.sprints %}
+  <div class="vbars">
+    {% for v in velocity.sprints %}
+    <div class="vbar" title="{{ v.name }}: {{ v.tasks }} / {{ v.planned }}">
+      <div class="vcol"><i class="planned" style="height:{{ (v.planned / ([velocity.max, v.planned]|max) * 100)|round|int }}%"></i>
+        <i class="done" style="height:{{ (v.tasks / ([velocity.max, v.planned]|max) * 100)|round|int }}%"></i></div>
+      <b>{{ v.tasks }}</b><small translate="no">{{ v.name }}</small>
+    </div>
+    {% endfor %}
+  </div>
+  <ul class="legend inline"><li><i class="lg-remaining"></i>Finished in the sprint</li><li><i class="lg-scope"></i>Planned</li></ul>
+  {% else %}<div class="empty small">No active or closed sprints yet.</div>{% endif %}
+</section>
+
+{% if admin %}
+<dialog id="sprintDialog" class="dialog">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2>New sprint</h2>
+    <label>Name<input name="name" required maxlength="60" placeholder="e.g. Sprint 7"></label>
+    <label>Goal<textarea name="goal" maxlength="300" rows="2" placeholder="What should be finished at the end?"></textarea></label>
+    <div class="row2"><label>First day<input type="date" name="start_date" value="{{ new_start }}" required></label>
+      <label>Last day<input type="date" name="end_date" value="{{ new_end }}" required></label></div>
+    <div class="dialog-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary">Save sprint</button></div>
+  </form>
+</dialog>
+{% endif %}
+{% endblock %}

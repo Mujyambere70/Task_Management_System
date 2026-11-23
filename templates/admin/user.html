@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ u.name }}{% endblock %}
+{% block content %}
+{% set me = u.id == user.id %}
+<div class="page-head">
+  <div><a class="back" href="{{ url_for('admin_users') }}">← Accounts</a>
+    <h1 class="who">{% if u.photo %}<img class="avatar" src="{{ url_for('user_photo', user_id=u.id) }}" alt="">{% else %}{{ m.avatar(u.name, u.color) }}{% endif %} <span translate="no">{{ u.name }}</span>{% if me %} <small class="muted">(me)</small>{% endif %}</h1>
+    <p class="muted"><span translate="no">{{ u.email }}</span> · {{ 'Site administrator' if u.role == 'admin' else 'Member' }} · {{ 'Active' if u.active else 'Turned off' }} · {{ 'Joined'|tr }} {{ u.created_at|nice_date }}</p></div>
+  <div class="actions"><a class="btn btn-light" href="{{ url_for('admin_user_data', user_id=u.id) }}"><svg class="i"><use href="#i-download"/></svg> All data (JSON)</a></div>
+</div>
+{% include "admin/_nav.html" %}
+{% if me %}<div class="note"><svg class="i"><use href="#i-info"/></svg> This is your own account. You can change everything here or on <a href="{{ url_for('profile') }}">your profile page</a>.</div>{% endif %}
+
+<div class="grid-2">
+<section class="card settings-form">
+  <h2>Personal details</h2>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="details">
+    <label>Full name<input name="name" value="{{ u.name }}" required maxlength="80"></label>
+    <label>Email<input type="email" name="email" value="{{ u.email }}" required maxlength="120"></label>
+    <div class="row2"><label>Job title<input name="job_title" value="{{ u.job_title or '' }}" maxlength="80"></label>
+      <label>Phone<input name="phone" value="{{ u.phone or '' }}" maxlength="25" placeholder="+250 7xx xxx xxx"></label></div>
+    <label>About<textarea name="bio" rows="3" maxlength="500">{{ u.bio or '' }}</textarea></label>
+    <div class="row2"><label>Language<select name="lang">{% for code, name in LANGUAGES.items() %}<option value="{{ code }}" {{ 'selected' if u.lang == code }} translate="no">{{ name }}</option>{% endfor %}</select></label>
+      <label>Reminders<select name="remind_days">{% for d, n in [(1, 'One day before the deadline'), (2, 'Two days before the deadline'), (3, 'Three days before the deadline'), (0, 'No reminders')] %}<option value="{{ d }}" {{ 'selected' if u.remind_days == d }}>{{ n }}</option>{% endfor %}</select></label></div>
+    <fieldset><legend>Colour</legend><div class="swatches">{% for c in COLORS %}<label><input type="radio" name="color" value="{{ c }}" {{ 'checked' if u.color == c }}><i style="background:{{ c }}"></i></label>{% endfor %}</div></fieldset>
+    <label class="toggle"><span>Send notifications by email</span><input type="checkbox" name="notify_email" value="1" {{ 'checked' if u.notify_email }}></label>
+    <div class="form-actions"><button class="btn btn-primary">Save details</button></div>
+  </form>
+</section>
+
+<div class="stack">
+<section class="card">
+  <h2>Photo</h2>
+  <form method="post" enctype="multipart/form-data" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="photo">
+    <input type="file" name="photo" accept="image/png,image/jpeg,image/webp" aria-label="Photo">
+    <button class="btn btn-light sm">Upload</button>
+    {% if u.photo %}<button class="btn btn-danger-ghost sm" name="photo_off" value="1">Remove photo</button>{% endif %}
+  </form>
+</section>
+
+<section class="card">
+  <h2>Password and sign in</h2>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="password">
+    <div class="row2"><label>New password<input type="password" name="password" minlength="8" required autocomplete="new-password"></label>
+      <label>Repeat it<input type="password" name="password2" minlength="8" required autocomplete="new-password"></label></div>
+    <button class="btn btn-light sm">Set new password</button>
+  </form>
+  <div class="btn-row">
+    <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-light sm" name="action" value="reset_link"><svg class="i"><use href="#i-mail"/></svg> Email a reset link</button></form>
+    {% if u.totp_enabled %}<form method="post" data-confirm="Turn off two-factor login for this account?"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-light sm" name="action" value="no_2fa">Turn off two-factor login</button></form>{% endif %}
+    <form method="post" data-confirm="Sign this person out on every device?"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-light sm" name="action" value="sign_out">Sign out everywhere</button></form>
+  </div>
+  <p class="small muted">{{ 'Devices with push notifications: {0}'|tr|replace('{0}', push_count) }}</p>
+</section>
+
+<section class="card">
+  <h2>Access</h2>
+  <div class="btn-row">
+    <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="site_admin"><input type="hidden" name="on" value="{{ '0' if u.role == 'admin' else '1' }}">
+      <button class="btn btn-light sm"><svg class="i"><use href="#i-shield"/></svg> {{ 'Remove site administrator' if u.role == 'admin' else 'Make site administrator' }}</button></form>
+    {% if not me %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-light sm" name="action" value="toggle">{{ 'Turn the account off' if u.active else 'Turn the account on' }}</button></form>{% endif %}
+  </div>
+</section>
+</div>
+</div>
+
+<section class="card">
+  <div class="card-head"><h2>Workspaces</h2><span class="muted small">{{ ws_of|length }}</span></div>
+  <table class="table">
+    <thead><tr><th>Workspace</th><th>Members</th><th>Open tasks</th><th>Role</th><th></th></tr></thead>
+    <tbody>
+    {% for w in ws_of %}
+      <tr><td><a href="{{ url_for('admin_workspace', ws=w.id) }}" translate="no">{{ w.name }}</a></td><td>{{ w.members }}</td><td>{{ w.open_tasks }}</td>
+        <td><form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="ws_role"><input type="hidden" name="workspace" value="{{ w.id }}">
+          <select name="role" onchange="this.form.submit()" aria-label="Role">{% for r, n in [('member', 'Member'), ('admin', 'Admin')] %}<option value="{{ r }}" {{ 'selected' if w.role == r }}>{{ n }}</option>{% endfor %}</select></form></td>
+        <td><form method="post" data-confirm="Remove from this workspace? Their tasks there become unassigned."><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="remove_ws"><input type="hidden" name="workspace" value="{{ w.id }}">
+          <button class="btn btn-danger-ghost sm">Remove</button></form></td></tr>
+    {% else %}<tr><td colspan="5"><div class="empty small">Not in any workspace.</div></td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% set mine = ws_of|map(attribute='id')|list %}
+  {% set free = all_ws|rejectattr('id', 'in', mine)|list %}
+  {% if free %}
+  <form method="post" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="add_ws">
+    <select name="workspace" aria-label="Workspace">{% for w in free %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select>
+    <select name="role" aria-label="Role"><option value="member">Member</option><option value="admin">Admin</option></select>
+    <button class="btn btn-light sm"><svg class="i"><use href="#i-plus"/></svg> Add to workspace</button>
+  </form>{% endif %}
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Resumes</h2><span class="muted small">{{ resumes|length }}</span></div>
+  <ul class="result-list">{% for r in resumes %}<li><a href="{{ url_for('resume_public', slug=r.slug) }}" translate="no">{{ r.title }}</a> <small class="muted"><span>{{ VIS[r.visibility] }}</span> · <span>{{ '{0} views'|tr|replace('{0}', r.views) }}</span></small></li>{% else %}<li class="empty small">No resumes.</li>{% endfor %}</ul>
+  {% if resumes %}<a class="small" href="{{ url_for('admin_resumes') }}">Manage resumes</a>{% endif %}
+</section>
+
+{% if not me %}
+<section class="card danger-item red">
+  <div><b class="red">Delete this account</b><p class="muted small">The account, its notifications and resumes are deleted. Tasks stay in the workspaces and become unassigned.</p></div>
+  <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="delete">
+    <input name="confirm" placeholder="Type the email to confirm" required autocomplete="off" aria-label="Email to confirm">
+    <button class="btn btn-danger sm">Delete account</button></form>
+</section>
+{% endif %}
+{% endblock %}

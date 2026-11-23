@@ -40,6 +40,8 @@ class NoticesMixin:
                     (ws, user_id, "notification", task_id, text_l, now()))
         from store import _wake_listeners
         con.after_commit.append(_wake_listeners)
+        if hasattr(self, "queue_push"):                   # version 3: also to the phones of the person
+            self.queue_push(con, user_id, self.site("site_name"), text_l, f"/tasks/{task_id}" if task_id else "/")
         if not (email and u["notify_email"] and self.notifier and self.notifier.email_provider()):
             return
         if is_example_email(u["email"]):                  # demo people are never contacted
@@ -48,14 +50,19 @@ class NoticesMixin:
         base = self.env.get("APP_URL", "").rstrip("/")
         link = f"\n\n{i18n.translate_text('Open the task:', lang)} {base}/tasks/{task_id}" if task_id and base else ""
         hello = i18n.translate_text("Hello {0},", lang).replace("{0}", u["name"].split()[0])
-        body = f"{hello}\n\n{text_l}{link}\n\n- TaskFlow"
+        sign = self.site("mail_signature") if hasattr(self, "site") else "- TaskFlow"
+        body = f"{hello}\n\n{text_l}{link}\n\n{sign}"
         subj = i18n.translate_text(subject or "TaskFlow notification", lang)
-        jobs = [(nid, "email", u["email"], subj, body)]
+        oid = self.outbox_add(con, "email", u["email"], subj, body) if hasattr(self, "outbox_add") else None
+        jobs = [((nid, oid), "email", u["email"], subj, body)]
         con.after_commit.append(lambda: self.notifier.deliver(jobs, self._email_result))
 
-    def _email_result(self, notification_id, status):
+    def _email_result(self, ids, status):
+        nid, oid = ids if isinstance(ids, tuple) else (ids, None)
         with self.db() as con:
-            con.execute("UPDATE notifications SET emailed = ? WHERE id = ?", (status[:120], notification_id))
+            con.execute("UPDATE notifications SET emailed = ? WHERE id = ?", (status[:120], nid))
+            if oid:
+                con.execute("UPDATE outbox SET status = ? WHERE id = ?", (status[:200], oid))
 
     def _notify_assigned(self, con, by_id, user_id, task_id, title, ws):
         name = con.execute("SELECT name FROM users WHERE id = ?", (by_id,)).fetchone()[0]
@@ -114,7 +121,7 @@ class NoticesMixin:
             rows = [dict(r) for r in con.execute(
                 "SELECT t.id, t.title, t.due_date, t.workspace_id, t.assignee_id, u.remind_days "
                 "FROM tasks t JOIN users u ON u.id = t.assignee_id "
-                "WHERE t.status != 'done' AND t.due_date IS NOT NULL AND t.due_date BETWEEN ? AND ? "
+                "WHERE t.status != 'done' AND t.due_date IS NOT NULL AND t.due_date BETWEEN ? AND ? AND t.workspace_id > 0 "
                 "AND u.active = 1 AND u.remind_days > 0 AND t.reminded_for != t.due_date",
                 (today.isoformat(), horizon))]
         sent = 0
@@ -132,6 +139,8 @@ class NoticesMixin:
                         f"“{t['title']}” is due in {left} days.")
                 self.notify(con, t["assignee_id"], "reminder", text, ws=t["workspace_id"], task_id=t["id"],
                             email=True, subject="Deadline reminder")
+                if hasattr(self, "chat_post"):
+                    self.chat_post(con, t["workspace_id"], "reminder", text)
                 sent += 1
         return sent
 
@@ -146,7 +155,8 @@ class NoticesMixin:
         cutoff = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S")
         with self.db() as con:
             con.execute("DELETE FROM events WHERE created_at < ?", (cutoff,))
-        return {"reminders": sent}
+        purged = self.empty_old_trash() if hasattr(self, "empty_old_trash") else 0
+        return {"reminders": sent, "trash_emptied": purged}
 
     # ================================================================ live events
     def latest_event_id(self):
@@ -180,7 +190,19 @@ class NoticesMixin:
                 t("Someone asked to reset the password of your TaskFlow account. Open this link within 30 minutes "
                   "to choose a new password:") + f"\n{base_url}reset/{token}\n\n" +
                 t("If it was not you, you can ignore this email: your password stays the same."))
-        self.notifier.send_email(u["email"], t("Reset your TaskFlow password"), text)
+        subject = t("Reset your TaskFlow password")
+        oid = None
+        if hasattr(self, "outbox_add"):
+            with self.db() as con:                        # the outbox shows that a link was sent, never the link
+                oid = self.outbox_add(con, "email", u["email"], subject, "(password reset link)")
+        try:
+            self.notifier.send_email(u["email"], subject, text)
+        except Exception as e:
+            if oid:
+                self.outbox_result(oid, f"failed: {str(e)[:150]}")
+            raise
+        if oid:
+            self.outbox_result(oid, "sent")
         return True
 
     def reset_token_ok(self, token):
@@ -203,7 +225,7 @@ class NoticesMixin:
                                (h, now())).rowcount:
                 raise TaskError("This link has expired or was already used. Please ask for a new one.")
             uid = con.execute("SELECT user_id FROM password_resets WHERE token_hash = ?", (h,)).fetchone()[0]
-            con.execute("UPDATE users SET password_hash = ? WHERE id = ?", (generate_password_hash(new), uid))
+            con.execute("UPDATE users SET password_hash = ?, session_ver = session_ver + 1 WHERE id = ?", (generate_password_hash(new), uid))
             self.log(con, uid, "password_reset_by_email")
             return uid
 

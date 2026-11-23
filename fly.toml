@@ -1,6 +1,8 @@
 # Fly.io settings for TaskFlow.
 # Secrets are NEVER written in this file. Set them once with:
 #   fly secrets set DATABASE_URL="postgresql://...neon.tech/...?sslmode=require" SECRET_KEY="..." APP_URL="https://michel-taskflow.fly.dev" --app michel-taskflow
+# Optional secrets (TaskFlow 3): BREVO_API_KEY + ALERT_EMAIL_FROM (or SMTP_HOST, SMTP_USER, SMTP_PASSWORD) for email,
+# TELEGRAM_BOT_TOKEN for Telegram messages, CRON_KEY for an outside scheduler. Web Push keys are made by the app itself.
 app = "michel-taskflow"
 primary_region = "ams"
 

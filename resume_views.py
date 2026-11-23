@@ -66,7 +66,7 @@ def register(app, store, login_required):
             return " – ".join(x for x in (start, end) if x)
 
         sections = [s for s in c["sections"] if s["visible"] and (s["items"] or s.get("body"))]
-        two_cols = r["theme"] in ("modern", "compact")
+        two_cols = r["theme"] in ("modern", "compact", "elegant")
         side = [s for s in sections if two_cols and s["type"] in SIDE_TYPES]
         main = [s for s in sections if s not in side]
         photo = url_for("resume_photo", slug=r["slug"], v=r["updated_at"][-8:].replace(":", "")) if r["has_photo"] else None

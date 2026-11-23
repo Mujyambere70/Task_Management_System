@@ -18,6 +18,6 @@
   <button type="button" class="link fill-demo" data-email="admin@taskflow.demo" data-pw="Admin@1234">Admin · admin@taskflow.demo</button>
   <button type="button" class="link fill-demo" data-email="anna@taskflow.demo" data-pw="Demo@1234">Member · anna@taskflow.demo</button>
 </div>
-{% if settings.allow_registration == '1' %}<p class="switch">New here? <a href="{{ url_for('register') }}">Create an account</a></p>
+{% if CFG.allow_registration == '1' %}<p class="switch">New here? <a href="{{ url_for('register') }}">Create an account</a></p>
 {% else %}<p class="switch">Need an account? Ask your workspace admin.</p>{% endif %}
 {% endblock %}

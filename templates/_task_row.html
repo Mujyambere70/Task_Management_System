@@ -9,7 +9,7 @@
   {% else %}<span class="tick {{ 'ticked' if t.status == 'done' }}"></span>{% endif %}
   <a class="trow-main" href="{{ url_for('task_detail', task_id=t.id) }}">
     <b translate="no">{{ t.title }}</b>
-    <span class="meta">{{ m.project_tag(t) }} {{ m.status_pill(t.status) }} {{ m.checklist(t) }} {{ m.extras(t) }}</span>
+    <span class="meta">{{ m.project_tag(t) }} {{ m.status_pill(t.status) }} {{ m.checklist(t) }} {{ m.extras(t) }} {% for lb in (tlabels or {}).get(t.id, []) %}<span class="label-chip sm" style="--c: {{ lb.color }}" translate="no">{{ lb.name }}</span>{% endfor %}{% if t.repeat %}<svg class="i sm" title="Repeats"><use href="#i-repeat"/></svg>{% endif %}</span>
   </a>
   <span class="trow-side">{{ m.priority_pill(t.priority) }} {{ m.due(t) }}</span>
 </div>

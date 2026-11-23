@@ -13,6 +13,9 @@ The Store class is built from parts (mixins) in other files:
     timetrack.py  timers, logged time, estimates, burndown charts
     notices.py    notifications, email reminders, live events, password reset, two-factor login
     resumes.py    the resume builder
+    planning.py   (v3) labels, sprints, dependencies, recurring tasks, Gantt, suggested estimates, search, trash
+    admin_store.py (v3) site settings, every account / workspace / resume, interface words, restore, profiles
+    integrations.py (v3) outbox, Slack and Telegram, Web Push, iCal feed
 """
 
 import os
@@ -24,8 +27,11 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from core import TaskError, count_case, now, parse_due, parse_duration
 from db import Database
+from admin_store import AdminMixin
 from files import FilesMixin
+from integrations import IntegrationsMixin
 from notices import NoticesMixin
+from planning import REPEATS, PlanningMixin
 from resumes import ResumesMixin
 from timetrack import TimeMixin
 
@@ -184,7 +190,64 @@ CREATE TABLE IF NOT EXISTS resumes (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS labels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS task_labels (
+    task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    label_id INTEGER NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+    PRIMARY KEY (task_id, label_id)
+);
+CREATE TABLE IF NOT EXISTS sprints (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    goal TEXT NOT NULL DEFAULT '',
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'planned',
+    created_by INTEGER,
+    created_at TEXT NOT NULL,
+    closed_at TEXT
+);
+CREATE TABLE IF NOT EXISTS task_deps (
+    task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    blocked_by INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    PRIMARY KEY (task_id, blocked_by)
+);
+CREATE TABLE IF NOT EXISTS outbox (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel TEXT NOT NULL,
+    to_addr TEXT NOT NULL,
+    subject TEXT NOT NULL DEFAULT '',
+    body TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'waiting',
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS push_subs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ui_overrides (
+    lang TEXT NOT NULL,
+    english TEXT NOT NULL,
+    text TEXT NOT NULL,
+    updated_by INTEGER,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (lang, english)
+);
 CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id);
+CREATE INDEX IF NOT EXISTS idx_labels_ws ON labels(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_sprints_ws ON sprints(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_push_user ON push_subs(user_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_activity_time ON activity(created_at);
 CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
@@ -199,9 +262,17 @@ MIGRATIONS = {
     "users": [("lang", "TEXT NOT NULL DEFAULT 'en'"), ("notify_email", "INTEGER NOT NULL DEFAULT 1"),
               ("remind_days", "INTEGER NOT NULL DEFAULT 1"), ("totp_secret", "TEXT NOT NULL DEFAULT ''"),
               ("totp_enabled", "INTEGER NOT NULL DEFAULT 0"), ("totp_last_step", "INTEGER NOT NULL DEFAULT 0"),
-              ("last_ws", "INTEGER")],
+              ("last_ws", "INTEGER"),
+              # version 3
+              ("phone", "TEXT NOT NULL DEFAULT ''"), ("bio", "TEXT NOT NULL DEFAULT ''"),
+              ("photo", "TEXT NOT NULL DEFAULT ''"), ("session_ver", "INTEGER NOT NULL DEFAULT 1"),
+              ("ical_token", "TEXT NOT NULL DEFAULT ''"), ("notify_push", "INTEGER NOT NULL DEFAULT 1")],
     "projects": [("workspace_id", "INTEGER")],
-    "tasks": [("workspace_id", "INTEGER"), ("estimate_minutes", "INTEGER"), ("reminded_for", "TEXT NOT NULL DEFAULT ''")],
+    "tasks": [("workspace_id", "INTEGER"), ("estimate_minutes", "INTEGER"), ("reminded_for", "TEXT NOT NULL DEFAULT ''"),
+              # version 3
+              ("start_date", "TEXT"), ("sprint_id", "INTEGER"), ("repeat", "TEXT NOT NULL DEFAULT ''"),
+              ("repeat_parent", "INTEGER"), ("deleted_at", "TEXT"), ("deleted_by", "INTEGER")],
+    "workspaces": [("slack_url", "TEXT NOT NULL DEFAULT ''"), ("telegram_chat", "TEXT NOT NULL DEFAULT ''")],
     "activity": [("workspace_id", "INTEGER")],
     "comments": [("edited_at", "TEXT")],
 }
@@ -228,6 +299,12 @@ LIVE = {
     "project_deleted": "{0} changed the projects",
     "project_archived": "{0} changed the projects",
     "project_restored": "{0} changed the projects",
+    "task_restored": "{0} restored “{1}”",
+    "sprint_saved": "{0} changed the sprints",
+    "sprint_active": "{0} started the sprint “{1}”",
+    "sprint_closed": "{0} closed the sprint “{1}”",
+    "sprint_deleted": "{0} changed the sprints",
+    "labels_changed": "{0} changed the labels",
 }
 
 # one Condition per process: an open WebSocket waits on it, so a change made in the same process
@@ -240,7 +317,7 @@ def _wake_listeners():
         LIVE_SIGNAL.notify_all()
 
 
-class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
+class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin, PlanningMixin, AdminMixin, IntegrationsMixin):
     def __init__(self, target, driver=None, notifier=None, env=None):
         """target: path of an SQLite file, or a postgresql:// URL."""
         self.env = os.environ if env is None else env
@@ -258,6 +335,7 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
             from notify import Notifier
             notifier = Notifier(env=self.env)
         self.notifier = notifier
+        self.http = None                                  # tests put a fake HTTP opener here
 
     def db(self):
         return self.database.connect()
@@ -300,6 +378,8 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
             con.execute("INSERT INTO events (workspace_id, user_id, kind, task_id, text, created_at) VALUES (?,?,?,?,?,?)",
                         (ws, user_id, action, task_id, text, now()))
             con.after_commit.append(_wake_listeners)
+            if action in ("task_created", "task_completed"):
+                self.chat_post(con, ws, action, text)
 
     # ================================================================ users
     def count_users(self):
@@ -407,7 +487,8 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
         if len(new or "") < MIN_PASSWORD:
             raise TaskError(f"Password must have at least {MIN_PASSWORD} characters.")
         with self.db() as con:
-            con.execute("UPDATE users SET password_hash = ? WHERE id = ?", (generate_password_hash(new), user_id))
+            con.execute("UPDATE users SET password_hash = ?, session_ver = session_ver + 1 WHERE id = ?",
+                        (generate_password_hash(new), user_id))
             self.log(con, user_id, "password_changed")
 
     def admin_toggle_active(self, admin_id, user_id):
@@ -422,7 +503,8 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
         if len(new or "") < MIN_PASSWORD:
             raise TaskError(f"Password must have at least {MIN_PASSWORD} characters.")
         with self.db() as con:
-            con.execute("UPDATE users SET password_hash = ? WHERE id = ?", (generate_password_hash(new), user_id))
+            con.execute("UPDATE users SET password_hash = ?, session_ver = session_ver + 1 WHERE id = ?",
+                        (generate_password_hash(new), user_id))
             name = con.execute("SELECT name FROM users WHERE id = ?", (user_id,)).fetchone()["name"]
             self.log(con, admin_id, "password_reset", name)
 
@@ -472,7 +554,9 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
             con.execute("UPDATE activity SET user_id = NULL WHERE user_id = ?", (user_id,))
             con.execute("UPDATE subtasks SET created_by = NULL WHERE created_by = ?", (user_id,))
             con.execute("UPDATE attachments SET user_id = NULL WHERE user_id = ?", (user_id,))
-            for table in ("memberships", "time_entries", "notifications", "password_resets", "resumes"):
+            con.execute("UPDATE tasks SET deleted_by = NULL WHERE deleted_by = ?", (user_id,))
+            con.execute("UPDATE sprints SET created_by = NULL WHERE created_by = ?", (user_id,))
+            for table in ("memberships", "time_entries", "notifications", "password_resets", "resumes", "push_subs"):
                 con.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
             # workspaces with nobody left are removed with everything in them
             for (ws,) in con.execute("SELECT id FROM workspaces w WHERE NOT EXISTS "
@@ -493,7 +577,7 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
         con.execute("INSERT INTO settings (key, value) VALUES (?, ?) "
                     "ON CONFLICT (key) DO UPDATE SET value = excluded.value", (key, value))
 
-    def save_site_settings(self, admin_id, allow_registration):
+    def save_site_settings(self, admin_id, allow_registration):            # version 2 (kept for old forms)
         with self.db() as con:
             self._put_setting(con, "allow_registration", "1" if allow_registration else "0")
             self.log(con, admin_id, "settings_updated")
@@ -658,7 +742,9 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
             self.log(con, admin_id, "workspace_deleted", w["name"])
 
     def _delete_workspace_rows(self, con, ws):
-        con.execute("DELETE FROM tasks WHERE workspace_id = ?", (ws,))          # comments, files, time go with them
+        con.execute("DELETE FROM tasks WHERE workspace_id IN (?, ?)", (ws, -ws))  # comments, files, time, labels go too
+        con.execute("DELETE FROM sprints WHERE workspace_id = ?", (ws,))
+        con.execute("DELETE FROM labels WHERE workspace_id = ?", (ws,))
         con.execute("DELETE FROM projects WHERE workspace_id = ?", (ws,))
         con.execute("DELETE FROM events WHERE workspace_id = ?", (ws,))
         con.execute("DELETE FROM notifications WHERE workspace_id = ?", (ws,))
@@ -667,14 +753,17 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
         con.execute("DELETE FROM workspaces WHERE id = ?", (ws,))
 
     # ================================================================ data tools (site administrator)
-    TABLES = ["users", "workspaces", "memberships", "projects", "tasks", "subtasks", "comments", "attachments",
-              "time_entries", "notifications", "events", "activity", "resumes", "settings"]
-    HIDDEN_COLUMNS = {"password_hash", "totp_secret", "data", "photo", "invite_code"}
+    TABLES = ["users", "workspaces", "memberships", "projects", "sprints", "labels", "tasks", "task_labels", "task_deps",
+              "subtasks", "comments", "attachments", "time_entries", "notifications", "events", "activity", "resumes",
+              "outbox", "push_subs", "ui_overrides", "settings"]
+    HIDDEN_COLUMNS = {"password_hash", "totp_secret", "data", "photo", "invite_code", "ical_token", "p256dh", "auth",
+                      "endpoint", "slack_url"}
 
     def table_rows(self, table, limit=500):
         if table not in self.TABLES:
             raise TaskError("Unknown table.")
-        order = "key" if table == "settings" else "id"
+        order = {"settings": "key", "task_labels": "task_id", "task_deps": "task_id",
+                 "ui_overrides": "updated_at"}.get(table, "id")
         with self.db() as con:
             cur = con.execute(f"SELECT * FROM {table} ORDER BY {order} DESC LIMIT ?", (limit,))
             rows = cur.fetchall()
@@ -684,7 +773,7 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
             out = []
             for r in rows:
                 d = dict(zip(cols_all, r))
-                if table == "settings" and d.get("key") == "secret_key":
+                if table == "settings" and d.get("key") in ("secret_key", "vapid", "logo"):
                     d["value"] = "••••••"
                 out.append([d[c] for c in cols])
             total = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
@@ -705,8 +794,11 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
     def delete_completed_tasks(self, admin_id, ws, older_than_days=30):
         cutoff = (datetime.now() - timedelta(days=older_than_days)).strftime("%Y-%m-%d %H:%M:%S")
         with self.db() as con:
-            n = con.execute("DELETE FROM tasks WHERE workspace_id = ? AND status = 'done' AND completed_at <= ?",
-                            (ws, cutoff)).rowcount
+            ids = [r[0] for r in con.execute("SELECT id FROM tasks WHERE workspace_id = ? AND status = 'done' "
+                                             "AND completed_at <= ?", (ws, cutoff))]
+            for tid in ids:
+                self._to_trash(con, admin_id, ws, tid)
+            n = len(ids)
             self.log(con, admin_id, "tasks_cleaned", f"{n} old completed tasks removed", ws=ws)
             return n
 
@@ -714,9 +806,10 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
         """Empty every table except the login key (used by 'reset demo data')."""
         with self.db() as con:
             for t in ["password_resets", "events", "notifications", "time_entries", "attachments", "subtasks",
-                      "comments", "activity", "tasks", "projects", "memberships", "workspaces", "resumes", "users"]:
+                      "comments", "activity", "task_labels", "task_deps", "tasks", "sprints", "labels", "projects",
+                      "memberships", "workspaces", "resumes", "outbox", "push_subs", "ui_overrides", "users"]:
                 con.execute(f"DELETE FROM {t}")
-            con.execute("DELETE FROM settings WHERE key != 'secret_key'")
+            con.execute("DELETE FROM settings WHERE key NOT IN ('secret_key', 'vapid')")
 
     # ================================================================ projects
     def projects(self, ws, include_archived=False):
@@ -819,23 +912,39 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
         description = (f.get("description") or "").strip()
         if len(description) > 5000:
             raise TaskError("The description is too long.")
+        due = parse_due(f.get("due_date"))
+        start = parse_due(f.get("start_date")) if f.get("start_date") else None
+        if start and due and start > due:
+            raise TaskError("The start date is after the due date.")
+        sprint = int(f["sprint_id"]) if str(f.get("sprint_id") or "").isdigit() else None
+        if sprint and not con.execute("SELECT 1 FROM sprints WHERE id = ? AND workspace_id = ? AND status != 'closed'",
+                                      (sprint, ws)).fetchone():
+            raise TaskError("Choose a sprint that is not closed.")
+        repeat = f.get("repeat") or ""
+        if repeat not in REPEATS:
+            raise TaskError("Unknown repeat.")
+        if repeat and not due:
+            raise TaskError("A repeating task needs a due date.")
         return dict(title=title, description=description, status=status, priority=priority, assignee_id=assignee,
-                    project_id=project, due_date=parse_due(f.get("due_date")),
-                    estimate_minutes=parse_duration(f.get("estimate")))
+                    project_id=project, due_date=due, estimate_minutes=parse_duration(f.get("estimate")),
+                    start_date=start, sprint_id=sprint, repeat=repeat)
 
     def create_task(self, user_id, ws, fields):
         with self.db() as con:
             f = self._check_task_fields(con, ws, fields)
-            if f["due_date"] and f["due_date"] < date.today().isoformat():
+            if f["due_date"] and f["due_date"] < date.today().isoformat() and not fields.get("_import"):
                 raise TaskError("Due date cannot be in the past.")
             ts = now()
             cur = con.execute(
                 "INSERT INTO tasks (project_id, title, description, status, priority, assignee_id, created_by, "
-                "due_date, created_at, updated_at, completed_at, workspace_id, estimate_minutes) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "due_date, created_at, updated_at, completed_at, workspace_id, estimate_minutes, start_date, sprint_id, "
+                "repeat) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (f["project_id"], f["title"], f["description"], f["status"], f["priority"], f["assignee_id"],
-                 user_id, f["due_date"], ts, ts, ts if f["status"] == "done" else None, ws, f["estimate_minutes"]))
+                 user_id, f["due_date"], ts, ts, ts if f["status"] == "done" else None, ws, f["estimate_minutes"],
+                 f["start_date"], f["sprint_id"], f["repeat"]))
             tid = cur.lastrowid
+            if "labels" in fields:
+                self.set_task_labels(con, ws, tid, fields.get("labels"))
             self.log(con, user_id, "task_created", f["title"], tid, ws=ws, title=f["title"])
             if f["assignee_id"] and f["assignee_id"] != user_id:
                 self._notify_assigned(con, user_id, f["assignee_id"], tid, f["title"], ws)
@@ -850,13 +959,20 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
             f = self._check_task_fields(con, ws, fields)
             completed = old["completed_at"]
             if f["status"] == "done" and old["status"] != "done":
+                self._check_not_blocked(con, task_id)
                 completed = now()
             elif f["status"] != "done":
                 completed = None
             con.execute("UPDATE tasks SET project_id=?, title=?, description=?, status=?, priority=?, assignee_id=?, "
-                        "due_date=?, updated_at=?, completed_at=?, estimate_minutes=? WHERE id=?",
+                        "due_date=?, updated_at=?, completed_at=?, estimate_minutes=?, start_date=?, sprint_id=?, "
+                        "repeat=? WHERE id=?",
                         (f["project_id"], f["title"], f["description"], f["status"], f["priority"],
-                         f["assignee_id"], f["due_date"], now(), completed, f["estimate_minutes"], task_id))
+                         f["assignee_id"], f["due_date"], now(), completed, f["estimate_minutes"], f["start_date"],
+                         f["sprint_id"], f["repeat"], task_id))
+            if "labels" in fields:
+                self.set_task_labels(con, ws, task_id, fields.get("labels"))
+            if f["status"] == "done" and old["status"] != "done":
+                self._after_done(con, user_id, task_id)
             changes = [k.replace("_id", "").replace("_minutes", "").replace("_", " ") for k in f if f[k] != old[k]]
             self.log(con, user_id, "task_updated", ", ".join(changes) or "no changes", task_id, ws=ws, title=f["title"])
             if f["assignee_id"] and f["assignee_id"] != old["assignee_id"] and f["assignee_id"] != user_id:
@@ -872,23 +988,28 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
                 raise TaskError("Task not found.")
             if old["status"] == status:
                 return
+            if status == "done":
+                self._check_not_blocked(con, task_id)
             con.execute("UPDATE tasks SET status = ?, updated_at = ?, completed_at = ? WHERE id = ?",
                         (status, now(), now() if status == "done" else None, task_id))
             self.log(con, user_id, "task_completed" if status == "done" else "status_changed",
                      f"{STATUS_NAMES[old['status']]} → {STATUS_NAMES[status]}", task_id, ws=ws, title=old["title"])
+            if status == "done":
+                self._after_done(con, user_id, task_id)
 
     def delete_task(self, user_id, ws, task_id):
         with self.db() as con:
             t = con.execute("SELECT title FROM tasks WHERE id = ? AND workspace_id = ?", (task_id, ws)).fetchone()
             if not t:
                 raise TaskError("Task not found.")
-            con.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+            self._to_trash(con, user_id, ws, task_id)                         # version 3: can be restored
             self.log(con, user_id, "task_deleted", t["title"], ws=ws, title=t["title"])
 
-    def task(self, task_id, ws=None):
+    def task(self, task_id, ws=None, trashed=False):
+        """One task; tasks in the trash are hidden unless trashed=True."""
         with self.db() as con:
             r = con.execute(self.TASK_SELECT + " WHERE t.id = ?", (task_id,)).fetchone()
-        if not r or (ws is not None and r["workspace_id"] != ws):
+        if not r or (ws is not None and r["workspace_id"] != ws) or (r["deleted_at"] and not trashed):
             return None
         return dict(r)
 
@@ -1062,13 +1183,29 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin):
         scope = f"workspace_id = ? AND id IN ({marks})"
         with self.db() as con:
             if action == "delete":
-                n = con.execute(f"DELETE FROM tasks WHERE {scope}", [ws] + ids).rowcount
+                found = [r[0] for r in con.execute(f"SELECT id FROM tasks WHERE {scope}", [ws] + ids)]
+                for tid in found:
+                    self._to_trash(con, admin_id, ws, tid)
+                n = len(found)
                 self.log(con, admin_id, "bulk_update", f"deleted {n} tasks", ws=ws)
                 return n
             if action == "status" and value in STATUS_NAMES:
+                becoming_done = [r[0] for r in con.execute(f"SELECT id FROM tasks WHERE {scope} AND status != 'done'",
+                                                           [ws] + ids)] if value == "done" else []
+                blocked = {r[0] for r in con.execute(
+                    "SELECT d.task_id FROM task_deps d JOIN tasks b ON b.id = d.blocked_by "
+                    "WHERE b.status != 'done' AND b.deleted_at IS NULL")} if value == "done" else set()
+                ids = [i for i in ids if i not in blocked]
+                if not ids:
+                    raise TaskError("These tasks wait for other tasks. Finish those first.")
+                marks = ",".join("?" * len(ids))
+                scope = f"workspace_id = ? AND id IN ({marks})"
                 n = con.execute(f"UPDATE tasks SET status = ?, updated_at = ?, completed_at = "
                                 f"CASE WHEN ? = 'done' THEN COALESCE(completed_at, ?) ELSE NULL END "
                                 f"WHERE {scope}", [value, now(), value, now(), ws] + ids).rowcount
+                for tid in becoming_done:
+                    if tid not in blocked:
+                        self._after_done(con, admin_id, tid)
                 detail = f"{n} tasks → {STATUS_NAMES[value]}"
             elif action == "priority" and value in PRIORITY_NAMES:
                 n = con.execute(f"UPDATE tasks SET priority = ?, updated_at = ? WHERE {scope}",

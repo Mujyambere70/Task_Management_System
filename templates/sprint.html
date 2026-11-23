@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ s.name }}{% endblock %}
+{% block content %}
+{% set admin = user.role == 'admin' %}
+<div class="page-head">
+  <div><a class="back" href="{{ url_for('sprints') }}">← Sprints</a>
+    <h1 translate="no">{{ s.name }}</h1>
+    <p class="muted"><span class="pill sp-{{ s.status }}">{{ STATES[s.status] }}</span> {{ s.start_date|nice_date }} – {{ s.end_date|nice_date }}{% if s.goal %} · <span translate="no">{{ s.goal }}</span>{% endif %}</p></div>
+  <div class="actions">
+    <a class="btn btn-light" href="{{ url_for('board', sprint=s.id) }}">Open board</a>
+    {% if admin %}
+    {% if s.status == 'planned' %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-primary" name="action" value="active">Start sprint</button></form>{% endif %}
+    {% if s.status == 'active' %}<button class="btn btn-primary" data-open="closeDialog">Close sprint</button>{% endif %}
+    {% if s.status == 'closed' %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-light" name="action" value="active">Open again</button></form>{% endif %}
+    <button class="btn btn-ghost" data-open="editSprint">Edit</button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div><small>Tasks</small><b>{{ tasks|length }}</b></div></div>
+  <div class="kpi"><div><small>Done</small><b>{{ tasks|selectattr('status', 'equalto', 'done')|list|length }}</b></div></div>
+  <div class="kpi"><div><small>Estimated</small><b>{{ est|hours if est else '—' }}</b></div></div>
+  <div class="kpi"><div><small>Time logged</small><b>{{ logged|hours if logged else '0' }}</b></div></div>
+</div>
+
+<section class="card">
+  <div class="card-head"><h2>Sprint burndown</h2>
+    <form method="get" class="inline-form"><select name="metric" onchange="this.form.submit()">
+      <option value="tasks" {{ 'selected' if metric == 'tasks' }}>Count tasks</option>
+      <option value="hours" {{ 'selected' if metric == 'hours' }}>Count estimated hours</option></select>
+      <noscript><button class="btn btn-dark sm">Show</button></noscript></form></div>
+  <div class="bd-head">
+    <div><small class="muted">{{ 'Still to do' if metric == 'tasks' else 'Estimated hours still to do' }}</small><b>{{ bd.remaining }}</b></div>
+    <ul class="legend inline"><li><i class="lg-remaining"></i>Remaining work</li><li><i class="lg-ideal"></i>Ideal line</li><li><i class="lg-scope"></i>All work (scope)</li></ul>
+  </div>
+  <svg class="burndown" viewBox="0 0 {{ svg.w }} {{ svg.h }}" role="img" aria-label="Burndown chart">
+    {% for y, v in svg.ticks %}<line x1="{{ svg.pad }}" x2="{{ svg.w - 10 }}" y1="{{ y }}" y2="{{ y }}" class="grid"/><text x="{{ svg.pad - 6 }}" y="{{ y + 4 }}" class="ytick">{{ v }}</text>{% endfor %}
+    {% for x, d in svg.labels %}<text x="{{ x }}" y="{{ svg.h - svg.pad + 18 }}" class="xtick">{{ fmt_date(d, 'd MMM') }}</text>{% endfor %}
+    <line x1="{{ svg.today_x }}" x2="{{ svg.today_x }}" y1="10" y2="{{ svg.h - svg.pad }}" class="today-line"/>
+    <polyline points="{{ svg.scope }}" class="l-scope"/>
+    <polyline points="{{ svg.ideal }}" class="l-ideal"/>
+    <polyline points="{{ svg.remaining }}" class="l-remaining"/>
+  </svg>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Tasks in this sprint</h2><span class="muted small">{{ tasks|length }}</span></div>
+  <div class="tlist">
+  {% for t in tasks %}
+    <div class="sprint-row">{% include "_task_row.html" %}
+      {% if admin and s.status != 'closed' %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="remove_task"><input type="hidden" name="task" value="{{ t.id }}">
+        <button class="icon-btn sm" title="Take out of the sprint"><svg class="i"><use href="#i-x"/></svg></button></form>{% endif %}</div>
+  {% else %}<div class="empty small">No tasks yet. Add tasks from the backlog below, or choose this sprint in a task's form.</div>{% endfor %}
+  </div>
+</section>
+
+{% if admin and s.status != 'closed' %}
+<section class="card" id="backlog">
+  <div class="card-head"><h2>Backlog</h2><span class="muted small">Open tasks without a sprint</span></div>
+  {% if backlog %}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="add_tasks">
+    <div class="check-list">
+      {% for t in backlog %}<label class="check-row"><input type="checkbox" name="task" value="{{ t.id }}"> {{ m.priority_pill(t.priority) }} <span translate="no">#{{ t.id }} {{ t.title }}</span> {{ m.due(t) }}</label>{% endfor %}
+    </div>
+    <button class="btn btn-primary sm"><svg class="i"><use href="#i-plus"/></svg> Add to sprint</button>
+  </form>
+  {% else %}<div class="empty small">The backlog is empty.</div>{% endif %}
+</section>
+{% endif %}
+
+{% if admin %}
+<dialog id="editSprint" class="dialog">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="save">
+    <h2>Edit sprint</h2>
+    <label>Name<input name="name" required maxlength="60" value="{{ s.name }}"></label>
+    <label>Goal<textarea name="goal" maxlength="300" rows="2">{{ s.goal or '' }}</textarea></label>
+    <div class="row2"><label>First day<input type="date" name="start_date" value="{{ s.start_date }}" required></label>
+      <label>Last day<input type="date" name="end_date" value="{{ s.end_date }}" required></label></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-danger-ghost" data-open="deleteSprint">Delete sprint</button>
+      <button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary">Save</button></div>
+  </form>
+</dialog>
+<dialog id="deleteSprint" class="dialog">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="delete">
+    <h2>Delete this sprint?</h2><p class="muted">Its tasks are kept and go back to the backlog.</p>
+    <div class="dialog-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-danger">Delete sprint</button></div>
+  </form>
+</dialog>
+<dialog id="closeDialog" class="dialog">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="closed">
+    <h2>Close the sprint</h2>
+    <p class="muted">{{ 'Open tasks: {0}'|tr|replace('{0}', tasks|rejectattr('status', 'equalto', 'done')|list|length) }}. Where should they go?</p>
+    <label>Open tasks go to
+      <select name="move_to"><option value="">The backlog</option>
+        {% for o in others %}<option value="{{ o.id }}">{{ o.name }}</option>{% endfor %}</select></label>
+    <div class="dialog-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary">Close sprint</button></div>
+  </form>
+</dialog>
+{% endif %}
+{% endblock %}

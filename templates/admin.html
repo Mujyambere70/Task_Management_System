@@ -9,26 +9,32 @@
   </div>
 </div>
 
+{% include "admin/_nav.html" %}
+
 <div class="stat-chips">
   {% for t, n in counts.items() %}<div><b>{{ n }}</b><small translate="no">{{ t }}</small></div>{% endfor %}
 </div>
 
-<div class="tabs admin-tabs">
-  {% for key, label in [('site', 'Site settings'), ('data', 'Database'), ('maintenance', 'Maintenance')] %}
+<div class="tabs">
+  {% for key, label in [('site', 'Services'), ('data', 'Database'), ('maintenance', 'Maintenance')] %}
   <a href="{{ url_for('admin_panel', tab=key, table=table if key == 'data' else None) }}" class="{{ 'on' if tab == key }}">{{ label }}</a>
   {% endfor %}
 </div>
 
 {% if tab == 'site' %}
 <div class="grid-2">
-<section class="card settings-form">
-  <h2>Site settings</h2>
-  <form method="post" action="{{ url_for('admin_settings') }}" class="form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label class="toggle"><span>Allow new people to sign up<small>If off, people can only join with an invite link or when an admin adds them.</small></span>
-      <input type="checkbox" name="allow_registration" value="1" {{ 'checked' if settings.allow_registration == '1' }}></label>
-    <div class="form-actions"><button class="btn btn-primary">Save settings</button></div>
-  </form>
+<section class="card">
+  <h2>Site at a glance</h2>
+  <ul class="services">
+    <li><svg class="i"><use href="#i-globe"/></svg><div><b translate="no">{{ CFG.site_name }}</b><small><span>{{ 'Languages on: {0}'|tr|replace('{0}', LANGS_ON|length) }}</span> · <span>{{ 'New people can sign up' if CFG.allow_registration == '1' else 'Sign up is closed (invite links still work)' }}</span></small></div>
+      <a class="btn btn-light sm" href="{{ url_for('admin_site') }}">Change</a></li>
+    <li><svg class="i"><use href="#i-alert"/></svg><div><b>Maintenance mode</b><small>{{ 'On: only site administrators can use the site.' if CFG.maintenance == '1' else 'Off' }}</small></div>
+      <span class="pill {{ 'st-overdue' if CFG.maintenance == '1' else 'st-done' }}">{{ 'On' if CFG.maintenance == '1' else 'Off' }}</span></li>
+    <li><svg class="i"><use href="#i-users"/></svg><div><b>Accounts and workspaces</b><small>{{ counts.users }} accounts · {{ counts.workspaces }} workspaces</small></div>
+      <a class="btn btn-light sm" href="{{ url_for('admin_users') }}">Manage</a></li>
+    <li><svg class="i"><use href="#i-id"/></svg><div><b>My own account</b><small translate="no">{{ user.name }} · {{ user.email }}</small></div>
+      <a class="btn btn-light sm" href="{{ url_for('admin_user', user_id=user.id) }}">Open</a></li>
+  </ul>
 </section>
 <section class="card">
   <h2>Services</h2>
@@ -90,6 +96,15 @@
     <div class="danger-item">
       <div><b>Back up all data</b><p class="muted small">One compressed JSON file with every table (passwords stay hashed). Single tables can be downloaded as CSV in the Database tab.</p></div>
       <a class="btn btn-light sm" href="{{ url_for('admin_backup') }}"><svg class="i"><use href="#i-download"/></svg> Download backup</a>
+    </div>
+    <div class="danger-item red">
+      <div><b class="red">Restore a backup</b><p class="muted small">Replaces ALL data with the data in a backup file made by TaskFlow (version 2 or 3). Everybody is signed out.</p></div>
+      <form method="post" action="{{ url_for('admin_restore') }}" enctype="multipart/form-data" data-confirm="This replaces all data. Are you sure?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="file" name="file" accept=".gz,.json,application/gzip,application/json" required aria-label="Backup file">
+        <input name="confirm" placeholder="Type RESTORE" required autocomplete="off" aria-label="Type RESTORE">
+        <button class="btn btn-danger sm">Restore</button>
+      </form>
     </div>
     <div class="danger-item red">
       <div><b class="red">Reset everything to demo data</b><p class="muted small">Deletes ALL workspaces, users, tasks, files, time entries and resumes and loads the demo data again. You will be signed out.</p></div>

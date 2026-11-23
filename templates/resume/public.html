@@ -28,7 +28,8 @@
     {% endif %}
   </div>
   <div class="cv-tool-right">
-    <button class="btn btn-light sm" onclick="window.print()"><svg class="i"><use href="#i-print"/></svg> Print / Save as PDF</button>
+    <button class="btn btn-light sm" onclick="window.print()"><svg class="i"><use href="#i-print"/></svg> Print</button>
+    <a class="btn btn-light sm" href="{{ url_for('resume_pdf', slug=r.slug) }}"><svg class="i"><use href="#i-download"/></svg> PDF</a>
     {% if r.visibility != 'private' %}
     <button class="btn btn-light sm" data-copy-text="{{ share_url }}"><svg class="i"><use href="#i-copy"/></svg> Copy link</button>
     <details class="share-menu">

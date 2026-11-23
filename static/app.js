@@ -67,6 +67,72 @@
     document.querySelector('input[name=password]').value = b.dataset.pw;
   }));
 
+
+  // ----- version 3: installable app, Web Push, suggested estimate, email change
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+  }
+  const b64ToBytes = s => {
+    const pad = '='.repeat((4 - s.length % 4) % 4);
+    const raw = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(raw, c => c.charCodeAt(0));
+  };
+  const pushOn = document.getElementById('pushOn'), pushOff = document.getElementById('pushOff');
+  const pushState = document.getElementById('pushState');
+  const postJson = (url, data) => fetch(url, { method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf || TF.csrf }, body: JSON.stringify(data) });
+  async function pushRefresh() {
+    if (!pushOn) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      pushOn.disabled = true; pushState.textContent = t('This browser cannot show notifications.'); return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    pushOn.hidden = !!sub; pushOff.hidden = !sub;
+    if (sub) pushState.textContent = t('Notifications are on for this device.');
+  }
+  pushOn?.addEventListener('click', async () => {
+    try {
+      if (Notification.permission === 'denied') { pushState.textContent = t('You blocked notifications for this site in the browser.'); return; }
+      if (await Notification.requestPermission() !== 'granted') { pushState.textContent = t('Notifications are off for this device.'); return; }
+      const key = (await (await fetch(pushOn.dataset.key, { credentials: 'same-origin' })).json()).key;
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(key) });
+      const r = await postJson(pushOn.dataset.sub, sub.toJSON());
+      if (!r.ok) throw new Error('save');
+      location.reload();
+    } catch (e) { pushState.textContent = t('Network problem. Please try again.'); }
+  });
+  pushOff?.addEventListener('click', async () => {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) { await postJson(pushOn.dataset.unsub, { endpoint: sub.endpoint }); await sub.unsubscribe(); }
+    location.reload();
+  });
+  pushRefresh().catch(() => {});
+
+  const suggestBtn = document.getElementById('suggestBtn');
+  suggestBtn?.addEventListener('click', async () => {
+    const form = suggestBtn.closest('form'), text = document.getElementById('suggestText');
+    const title = form.querySelector('[name=title]').value, project = form.querySelector('[name=project_id]')?.value || '';
+    text.textContent = t('Looking for similar tasks…');
+    try {
+      const u = suggestBtn.dataset.url + '?title=' + encodeURIComponent(title) + '&project=' + encodeURIComponent(project) +
+        (suggestBtn.dataset.task ? '&task=' + suggestBtn.dataset.task : '');
+      const d = await (await fetch(u, { credentials: 'same-origin' })).json();
+      text.textContent = d.text;
+      if (d.ok) document.getElementById('estimateInput').value = d.value;
+    } catch (e) { text.textContent = t('Network problem. Please try again.'); }
+  });
+
+  document.querySelectorAll('input[data-was]').forEach(inp => {
+    const box = inp.form.querySelector('.email-pass');
+    inp.addEventListener('input', () => {
+      const changed = inp.value.trim().toLowerCase() !== inp.dataset.was;
+      box.hidden = !changed; box.querySelector('input').required = changed;
+    });
+  });
+
   // ----- copy buttons
   function copied(btn) {
     const old = btn.innerHTML;

@@ -40,8 +40,9 @@ class FilesMixin:
             raise TaskError("This type of file is not allowed. Use PDF, pictures, Office files, text, CSV or ZIP.")
         if not data:
             raise TaskError("The file is empty.")
-        if len(data) > MAX_FILE_BYTES:
-            raise TaskError("The file is too big (max 5 MB).")
+        limit_mb = self.site_int("max_file_mb") if hasattr(self, "site_int") else MAX_FILE_BYTES // 1048576
+        if len(data) > limit_mb * 1024 * 1024:
+            raise TaskError(f"The file is too big (max {limit_mb} MB).")
         sig = SIGNATURES.get(ext)
         if ext == "webp":
             ok = data[:4] == b"RIFF" and data[8:12] == b"WEBP"
@@ -59,9 +60,9 @@ class FilesMixin:
             t = con.execute("SELECT workspace_id, title FROM tasks WHERE id = ?", (task_id,)).fetchone()
             if not t:
                 raise TaskError("Task not found.")
-            if con.execute("SELECT COUNT(*) FROM attachments WHERE task_id = ?", (task_id,)).fetchone()[0] \
-                    >= MAX_FILES_PER_TASK:
-                raise TaskError("A task can have at most 10 files.")
+            most = self.site_int("max_files") if hasattr(self, "site_int") else MAX_FILES_PER_TASK
+            if con.execute("SELECT COUNT(*) FROM attachments WHERE task_id = ?", (task_id,)).fetchone()[0] >= most:
+                raise TaskError(f"A task can have at most {most} files.")
             aid = con.execute("INSERT INTO attachments (task_id, workspace_id, user_id, name, mime, size, data, "
                               "created_at) VALUES (?,?,?,?,?,?,?,?)",
                               (task_id, t["workspace_id"], user_id, name, mime, len(data),

@@ -26,6 +26,15 @@
     <option value="">Any priority</option>
     {% for k, n in PRIORITIES %}<option value="{{ k }}" {{ 'selected' if args.get('priority') == k }}>{{ n }}</option>{% endfor %}
   </select>
+  {% if labels %}<select name="label" onchange="this.form.submit()">
+    <option value="">Any label</option>
+    {% for lb in labels %}<option value="{{ lb.id }}" {{ 'selected' if args.get('label') == lb.id|string }}>{{ lb.name }}</option>{% endfor %}
+  </select>{% endif %}
+  {% if sprints %}<select name="sprint" onchange="this.form.submit()">
+    <option value="">Any sprint</option>
+    <option value="none" {{ 'selected' if args.get('sprint') == 'none' }}>Backlog (no sprint)</option>
+    {% for sp in sprints %}<option value="{{ sp.id }}" {{ 'selected' if args.get('sprint') == sp.id|string }}>{{ sp.name }}</option>{% endfor %}
+  </select>{% endif %}
   {% if args %}<a class="btn btn-ghost" href="{{ url_for('board') }}">Clear</a>{% endif %}
 </form>
 
@@ -40,6 +49,7 @@
         <div class="kcard-top">{{ m.priority_pill(t.priority) }}{% if not current %}{{ m.project_tag(t) }}{% endif %}</div>
         <a href="{{ url_for('task_detail', task_id=t.id) }}" class="kcard-title" translate="no">{{ t.title }}</a>
         {% if t.description %}<p class="kcard-desc" translate="no">{{ t.description|truncate(80) }}</p>{% endif %}
+        {% if (tlabels or {}).get(t.id) %}<div class="kcard-labels">{% for lb in (tlabels or {}).get(t.id, []) %}<span class="label-chip sm" style="--c: {{ lb.color }}" translate="no">{{ lb.name }}</span>{% endfor %}</div>{% endif %}
         <div class="kcard-foot">
           {{ m.due(t) }}
           <span class="right">{{ m.checklist(t) }}{% if t.file_count %}<span class="cc" title="Files"><svg class="i"><use href="#i-clip"/></svg>{{ t.file_count }}</span>{% endif %}{% if t.comment_count %}<span class="cc"><svg class="i"><use href="#i-chat"/></svg>{{ t.comment_count }}</span>{% endif %}

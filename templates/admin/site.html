@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Site settings{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Site settings</h1><p class="muted">These settings change the whole website for everybody. Every change is written to the audit log.</p></div>
+  <button class="btn btn-primary" form="siteForm">Save settings</button></div>
+{% include "admin/_nav.html" %}
+<form method="post" enctype="multipart/form-data" class="settings-groups" id="siteForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% for group, items in groups.items() %}
+  <section class="card settings-form">
+    <h2>{{ group }}</h2>
+    {% for key, label, typ, default, help in items %}
+      {% if typ == 'bool' %}
+      <label class="toggle"><span>{{ label }}{% if help %}<small>{{ help }}</small>{% endif %}</span>
+        <input type="checkbox" name="{{ key }}" value="1" {{ 'checked' if V[key] == '1' }}></label>
+      {% elif typ == 'image' %}
+      <div class="logo-row"><img src="{{ url_for('brand_logo') }}" alt="" width="48" height="48">
+        <label>{{ label }}<input type="file" name="logo" accept="image/png,image/jpeg,image/webp"><small class="muted">{{ help }}</small></label>
+        {% if V[key] %}<label class="check-row"><input type="checkbox" name="logo_off" value="1"> Use the TaskFlow logo again</label>{% endif %}</div>
+      {% elif typ == 'color' %}
+      <label>{{ label }}<input type="color" name="{{ key }}" value="{{ V[key] }}">{% if help %}<small class="muted">{{ help }}</small>{% endif %}</label>
+      {% elif typ == 'lang' %}
+      <label>{{ label }}<select name="{{ key }}">{% for code, name in LANGUAGES.items() %}<option value="{{ code }}" {{ 'selected' if V[key] == code }} translate="no">{{ name }}</option>{% endfor %}</select>
+        {% if help %}<small class="muted">{{ help }}</small>{% endif %}</label>
+      {% elif typ == 'langs' %}
+      <fieldset><legend>{{ label }}</legend><div class="check-grid">
+        {% for code, name in LANGUAGES.items() %}<label class="check-row"><input type="checkbox" name="{{ key }}" value="{{ code }}" {{ 'checked' if code in V[key].split(',') or code == 'en' }} {{ 'disabled' if code == 'en' }}> <span translate="no">{{ name }}</span></label>{% endfor %}
+        </div>{% if help %}<small class="muted">{{ help }}</small>{% endif %}</fieldset>
+      {% elif typ.startswith('int') %}
+      {% set p = typ.split(':') %}
+      <label>{{ label }}<input type="number" name="{{ key }}" value="{{ V[key] }}" min="{{ p[1] }}" max="{{ p[2] }}" required>{% if help %}<small class="muted">{{ help }}</small>{% endif %}</label>
+      {% else %}
+      {% set p = typ.split(':') %}
+      <label>{{ label }}<input name="{{ key }}" value="{{ V[key] }}" maxlength="{{ p[2] }}" {{ 'required' if p[1]|int > 0 }}>{% if help %}<small class="muted">{{ help }}</small>{% endif %}</label>
+      {% endif %}
+    {% endfor %}
+  </section>
+  {% endfor %}
+  <div class="form-actions sticky-save"><button class="btn btn-primary">Save settings</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Workspaces{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Workspaces</h1><p class="muted">{{ 'Workspaces on the site: {0}. Open one to change its members, settings or data.'|tr|replace('{0}', rows|length) }}</p></div>
+  <button class="btn btn-primary" data-open="newWs"><svg class="i"><use href="#i-plus"/></svg> New workspace</button></div>
+{% include "admin/_nav.html" %}
+<section class="card flush"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Workspace</th><th>Owner</th><th>Members</th><th>Projects</th><th>Tasks</th><th>In trash</th><th>Files</th><th>Created</th></tr></thead>
+  <tbody>
+  {% for w in rows %}
+    <tr><td><span class="dot" style="background:{{ w.color }}"></span> <a href="{{ url_for('admin_workspace', ws=w.id) }}" translate="no"><b>{{ w.name }}</b></a></td>
+      <td translate="no">{{ w.owner_name or '—' }}</td><td>{{ w.members }}</td><td>{{ w.projects }}</td><td>{{ w.tasks }}</td><td>{{ w.trashed }}</td>
+      <td>{{ (w.file_bytes / 1024)|round(1) }} KB</td><td>{{ w.created_at|nice_date }}</td></tr>
+  {% else %}<tr><td colspan="8"><div class="empty">No workspaces.</div></td></tr>{% endfor %}
+  </tbody></table></div></section>
+<dialog id="newWs" class="dialog">
+  <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2>New workspace</h2>
+    <label>Name<input name="name" required maxlength="60"></label>
+    <label>Description<textarea name="description" rows="2" maxlength="300"></textarea></label>
+    <fieldset><legend>Colour</legend><div class="swatches">{% for c in COLORS %}<label><input type="radio" name="color" value="{{ c }}" {{ 'checked' if loop.first }}><i style="background:{{ c }}"></i></label>{% endfor %}</div></fieldset>
+    <p class="small muted">You become the admin of the new workspace.</p>
+    <div class="dialog-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary">Create</button></div>
+  </form>
+</dialog>
+{% endblock %}

@@ -3,7 +3,7 @@
 {% block title %}My profile{% endblock %}
 {% block content %}
 <div class="profile-head card">
-  {{ m.avatar(user.name, user.color, 'xl') }}
+  {% if user.photo %}<img class="avatar xl" src="{{ url_for('user_photo', user_id=user.id) }}" alt="">{% else %}{{ m.avatar(user.name, user.color, 'xl') }}{% endif %}
   <div><h1 translate="no">{{ user.name }}</h1><p class="muted"><span translate="no">{{ user.job_title }}</span>{% if user.job_title %} · {% endif %}<span translate="no">{{ user.email }}</span> · <span>{{ 'Workspace admin' if user.role == 'admin' else 'Member' }}</span>{% if user.site_admin %} · <span>Site administrator</span>{% endif %}</p>
     <p class="small"><a href="{{ url_for('resume_list') }}"><svg class="i"><use href="#i-id"/></svg> My resumes</a> · <a href="{{ url_for('notifications') }}"><svg class="i"><use href="#i-bell"/></svg> Notifications</a></p></div>
   <div class="profile-stats">
@@ -44,9 +44,12 @@
     <h2>Personal details</h2>
     <form method="post" class="form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="form" value="profile">
-      <label>Full name<input name="name" value="{{ user.name }}" required></label>
-      <label>Email<input type="email" name="email" value="{{ user.email }}" required></label>
-      <label>Job title<input name="job_title" value="{{ user.job_title }}"></label>
+      <label>Full name<input name="name" value="{{ user.name }}" required maxlength="80"></label>
+      <label>Email<input type="email" name="email" value="{{ user.email }}" required data-was="{{ user.email }}" maxlength="120"></label>
+      <label class="email-pass" hidden>Your present password (needed to change the email)<input type="password" name="password" autocomplete="current-password"></label>
+      <div class="row2"><label>Job title<input name="job_title" value="{{ user.job_title }}" maxlength="80"></label>
+        <label>Phone<input name="phone" value="{{ user.phone or '' }}" maxlength="25" placeholder="+250 7xx xxx xxx"></label></div>
+      <label>About me<textarea name="bio" rows="3" maxlength="500" placeholder="A few words about you">{{ user.bio or '' }}</textarea></label>
       <label>Language of the site and of my emails
         <select name="lang" translate="no">{% for code, name in LANGUAGES.items() %}<option value="{{ code }}" {{ 'selected' if user.lang == code }}>{{ name }}</option>{% endfor %}</select></label>
       <label>Avatar color</label>
@@ -80,6 +83,8 @@
           <option value="3" {{ 'selected' if user.remind_days == 3 }}>Three days before the deadline</option>
           <option value="0" {{ 'selected' if user.remind_days == 0 }}>No reminders</option>
         </select></label>
+      <label class="toggle"><span>Push notifications on my devices<small>Messages appear even when the site is closed. Turn them on in each browser below.</small></span>
+        <input type="checkbox" name="push" value="1" {{ 'checked' if user.notify_push }}></label>
       {% if user.email.endswith('.demo') %}<p class="hint">Demo addresses (.demo) never get real emails — the reminders appear under the bell.</p>{% endif %}
       <div class="form-actions"><button class="btn btn-primary">Save</button></div>
     </form>
@@ -109,6 +114,46 @@
       </div>
     </div>
     {% endif %}
+  </section>
+</div>
+
+<div class="grid-2">
+  <section class="card" id="photo">
+    <h2><svg class="i"><use href="#i-id"/></svg> Photo</h2>
+    <p class="muted small">JPG, PNG or WebP. It is cut to a square and made small.</p>
+    <form method="post" enctype="multipart/form-data" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="form" value="photo">
+      <input type="file" name="photo" accept="image/png,image/jpeg,image/webp" required aria-label="Photo">
+      <button class="btn btn-light sm"><svg class="i"><use href="#i-upload"/></svg> Upload</button>
+    </form>
+    {% if user.photo %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="form" value="photo_off"><button class="btn btn-ghost sm">Remove photo</button></form>{% endif %}
+  </section>
+  <section class="card" id="push">
+    <h2><svg class="i"><use href="#i-bell"/></svg> Push on this device</h2>
+    <p class="muted small" id="pushState">{{ 'Devices with push notifications: {0}'|tr|replace('{0}', push_count) }}</p>
+    <div class="btn-row">
+      <button type="button" class="btn btn-light sm" id="pushOn" data-key="{{ url_for('push_key') }}" data-sub="{{ url_for('push_subscribe') }}" data-unsub="{{ url_for('push_unsubscribe') }}"><svg class="i"><use href="#i-bell"/></svg> Turn on in this browser</button>
+      <button type="button" class="btn btn-ghost sm" id="pushOff" hidden>Turn off in this browser</button>
+      {% if push_count %}<form method="post" action="{{ url_for('push_test') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-ghost sm">Send a test</button></form>{% endif %}
+    </div>
+  </section>
+</div>
+
+<div class="grid-2">
+  <section class="card" id="calendar">
+    <h2><svg class="i"><use href="#i-calendar"/></svg> My calendar link</h2>
+    <p class="muted small">Add this private link to Google Calendar, Outlook or Apple Calendar (“subscribe by URL”). Your tasks with a due date and the sprints appear there. Do not share it.</p>
+    <div class="copy-row"><input readonly value="{{ ical_url }}" aria-label="Calendar link" translate="no"><button type="button" class="btn btn-light sm" data-copy-text="{{ ical_url }}"><svg class="i"><use href="#i-copy"/></svg> Copy</button></div>
+    <form method="post" data-confirm="Make a new link? The old link will stop working."><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="form" value="ical_new"><button class="btn btn-ghost sm">Make a new link</button></form>
+  </section>
+  <section class="card" id="devices">
+    <h2><svg class="i"><use href="#i-lock"/></svg> My data and devices</h2>
+    <div class="danger-list">
+      <div class="danger-item"><div><b>Download my data</b><p class="muted small">Everything the site keeps about you, in one JSON file.</p></div>
+        <a class="btn btn-light sm" href="{{ url_for('my_data') }}"><svg class="i"><use href="#i-download"/></svg> Download</a></div>
+      <div class="danger-item"><div><b>Sign out everywhere</b><p class="muted small">Use this if you lost a phone or used a shared computer. You must sign in again here too.</p></div>
+        <form method="post" data-confirm="Sign out on every device?"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="form" value="sign_out_all"><button class="btn btn-light sm">Sign out everywhere</button></form></div>
+    </div>
   </section>
 </div>
 

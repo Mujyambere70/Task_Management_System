@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Audit log</h1><p class="muted">Who did what on the whole site, newest first (last 300).</p></div></div>
+{% include "admin/_nav.html" %}
+<form class="filters" method="get"><input type="search" name="q" value="{{ q }}" placeholder="Person, action or details…"><button class="btn btn-dark">Search</button>
+  {% if q %}<a class="btn btn-ghost" href="{{ url_for('admin_audit') }}">Reset</a>{% endif %}</form>
+<section class="card flush"><div class="table-wrap"><table class="table">
+  <thead><tr><th>When</th><th>Person</th><th>Action</th><th>Details</th><th>Workspace</th></tr></thead>
+  <tbody>
+  {% for a in rows %}
+    <tr><td title="{{ a.created_at }}">{{ a.created_at|ago }}</td><td translate="no">{{ a.user_name or '—' }}</td><td><code>{{ a.action }}</code></td>
+      <td translate="no">{{ (a.details or '')|truncate(90) }}{% if a.task_id and a.workspace_id and a.workspace_id > 0 %} <small class="muted">#{{ a.task_id }}</small>{% endif %}</td><td translate="no">{{ a.ws_name or '—' }}</td></tr>
+  {% else %}<tr><td colspan="5"><div class="empty">Nothing found.</div></td></tr>{% endfor %}
+  </tbody></table></div></section>
+{% endblock %}

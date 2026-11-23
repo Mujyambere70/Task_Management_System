@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Search{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Search</h1><p class="muted">Tasks, comments, projects, people and labels of this workspace.</p></div></div>
+<form class="filters" method="get"><input type="search" name="q" value="{{ q }}" placeholder="Type at least 2 letters…" autofocus minlength="2"><button class="btn btn-dark">Search</button></form>
+{% if res %}
+<p class="muted">{{ 'Results found: {0}'|tr|replace('{0}', res.total) }}</p>
+{% if res.tasks %}<section class="card"><div class="card-head"><h2>Tasks</h2><span class="muted small">{{ res.tasks|length }}</span></div>
+  <div class="tlist">{% for t in res.tasks %}{% include "_task_row.html" %}{% endfor %}</div></section>{% endif %}
+{% if res.comments %}<section class="card"><div class="card-head"><h2>Comments</h2><span class="muted small">{{ res.comments|length }}</span></div>
+  <ul class="result-list">{% for c in res.comments %}<li><a href="{{ url_for('task_detail', task_id=c.task_id) }}#c{{ c.id }}" translate="no">{{ c.title }}</a>
+    <p translate="no">{{ c.body|truncate(160) }}</p><small class="muted"><span translate="no">{{ c.user_name or '—' }}</span> · {{ c.created_at|ago }}</small></li>{% endfor %}</ul></section>{% endif %}
+{% if res.projects %}<section class="card"><div class="card-head"><h2>Projects</h2></div>
+  <ul class="result-list">{% for p in res.projects %}<li><span class="dot" style="background:{{ p.color }}"></span> <a href="{{ url_for('board', project=p.id) }}" translate="no">{{ p.name }}</a>{% if p.description %} <small class="muted" translate="no">{{ p.description|truncate(100) }}</small>{% endif %}</li>{% endfor %}</ul></section>{% endif %}
+{% if res.people %}<section class="card"><div class="card-head"><h2>People</h2></div>
+  <ul class="result-list">{% for p in res.people %}<li>{{ m.avatar(p.name, p.color, 'xs') }} <a href="{{ url_for('task_list', assignee=p.id) }}" translate="no">{{ p.name }}</a> <small class="muted" translate="no">{{ p.job_title or '' }} {{ p.email }}</small></li>{% endfor %}</ul></section>{% endif %}
+{% if res.labels %}<section class="card"><div class="card-head"><h2>Labels</h2></div>
+  <p>{% for lb in res.labels %}<a class="label-chip" style="--c: {{ lb.color }}" href="{{ url_for('task_list', label=lb.id) }}" translate="no">{{ lb.name }}</a> {% endfor %}</p></section>{% endif %}
+{% if not res.total %}<div class="card empty">Nothing found. Try other words.</div>{% endif %}
+{% elif q %}<div class="card empty">Type at least 2 letters.</div>{% endif %}
+{% endblock %}

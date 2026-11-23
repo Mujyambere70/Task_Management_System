@@ -78,6 +78,10 @@ pages = ["/", "/board", "/tasks", "/tasks?status=open", "/tasks/new", "/calendar
          "/admin?tab=data", "/admin?tab=maintenance", "/resumes", "/resumes/1/edit", "/r/jean-michel-mujyambere",
          "/r/jean-michel-ru", "/explore", "/about", "/tasks/99999", "/join/" + code]
 pages += [f"/tasks/{t['id']}" for t in tasks[:40]] + [f"/tasks/{tasks[0]['id']}/edit"]
+pages += ["/sprints", "/sprints/1", "/sprints/2", "/sprints/2?metric=hours", "/gantt", "/labels", "/search?q=deploy",
+          "/search?q=zzzz", "/search?q=a", "/trash", "/admin/site", "/admin/users", "/admin/users/1", "/admin/users/2",
+          "/admin/workspaces", "/admin/workspaces/1", "/admin/resumes", "/admin/translations", "/admin/outbox",
+          "/admin/outbox?channel=email", "/admin/audit", "/tasks?label=1", "/board?sprint=2"]
 for url in pages:
     admin.get(url)
 admin.post("/tasks/" + str(tasks[0]["id"]) + "/timer", data={"csrf_token": "x" * 32})
@@ -93,10 +97,6 @@ with fresh.session_transaction() as s:
 for url in ["/", "/board", "/tasks", "/projects", "/reports", "/resumes", "/notifications", "/team", "/calendar"]:
     fresh.get(url)
 fresh.post("/login/verify")
-
-if MISSING:
-    print("\n".join(seen))
-    sys.exit(0)
 
 # texts from the Python code: messages, errors, emails, live events, resume headings
 pattern = re.compile(r'(?:TaskError|flash|tr|translate_text|_t|t)\(\s*(f?)"((?:[^"\\]|\\.)+)"')
@@ -126,6 +126,21 @@ for s in resume_views.EDITOR_STRINGS + ["Profile", "Present", "This resume is st
     record(s)
 for n in list(store_mod.STATUS_NAMES.values()) + list(store_mod.PRIORITY_NAMES.values()):
     record(n)
+import admin_store  # noqa: E402
+import planning  # noqa: E402
+for group, label, _typ, _d, help_text in admin_store.SITE_SETTINGS.values():
+    for x in (group, label, help_text):
+        if x:
+            record(x)
+for d in (planning.REPEATS, planning.SPRINT_STATES):
+    for v in d.values():
+        record(v)
+for text in ("sent", "not sent: demo or test address", "not sent: no email service", "failed"):
+    record(text)
+
+if MISSING:
+    print("\n".join(seen))
+    sys.exit(0)
 
 out = os.path.join(HERE, "strings_en.json")
 with open(out, "w", encoding="utf-8") as f:

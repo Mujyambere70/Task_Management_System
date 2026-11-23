@@ -8,13 +8,16 @@
   <section class="card">
     <div class="detail-head">
       <div>
-        <div class="meta">{{ m.status_pill(t.status) }} {{ m.priority_pill(t.priority) }} {{ m.project_tag(t) }}</div>
+        <div class="meta">{{ m.status_pill(t.status) }} {{ m.priority_pill(t.priority) }} {{ m.project_tag(t) }}
+          {% for lb in labels %}<a class="label-chip" style="--c: {{ lb.color }}" href="{{ url_for('task_list', label=lb.id) }}" translate="no">{{ lb.name }}</a>{% endfor %}
+          {% if t.repeat %}<span class="pill"><svg class="i"><use href="#i-repeat"/></svg> {{ REPEATS[t.repeat] }}</span>{% endif %}
+          {% if blockers|rejectattr('status', 'equalto', 'done')|list %}<span class="pill st-overdue"><svg class="i"><use href="#i-lock"/></svg> Waiting</span>{% endif %}</div>
         <h1 translate="no">{{ t.title }}</h1>
       </div>
       <div class="actions">
         {% if can_edit(t) %}<a class="btn btn-light" href="{{ url_for('task_edit', task_id=t.id) }}"><svg class="i"><use href="#i-edit"/></svg> Edit</a>{% endif %}
         {% if can_delete(t) %}
-        <form method="post" action="{{ url_for('task_delete', task_id=t.id) }}" data-confirm="Delete this task? This cannot be undone.">
+        <form method="post" action="{{ url_for('task_delete', task_id=t.id) }}" data-confirm="Move this task to the trash? It can be restored from the Trash page.">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="btn btn-danger-ghost"><svg class="i"><use href="#i-trash"/></svg> Delete</button>
         </form>{% endif %}
@@ -29,6 +32,14 @@
         <button class="{{ 'on' if t.status == key }}">{{ name }}</button>
       </form>
       {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if suggestion %}
+    <div class="suggest-card"><svg class="i"><use href="#i-sparkle"/></svg>
+      <div><b>Suggested estimate: {{ suggestion.minutes|hours }}</b>
+        <small class="muted">From {{ suggestion.count }} similar finished tasks: {% for e in suggestion.examples %}<a href="{{ url_for('task_detail', task_id=e.id) }}" translate="no">{{ e.title }}</a> ({{ e.minutes|hours }}){{ ', ' if not loop.last }}{% endfor %}</small></div>
+      {% if can_edit(t) %}<form method="post" action="{{ url_for('task_use_estimate', task_id=t.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-light sm">Use it</button></form>{% endif %}
     </div>
     {% endif %}
 
@@ -67,6 +78,22 @@
     </form>
     {% endif %}
 
+    <h3 class="sub" id="deps">Waits for{% if blockers %} · {{ blockers|length }}{% endif %}</h3>
+    <ul class="deps">
+      {% for b in blockers %}<li>{{ m.status_pill(b.status) }} <a href="{{ url_for('task_detail', task_id=b.id) }}" translate="no">#{{ b.id }} {{ b.title }}</a>
+        {% if can_edit(t) %}<form method="post" action="{{ url_for('task_deps', task_id=t.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="remove"><input type="hidden" name="blocked_by" value="{{ b.id }}"><button class="icon-btn sm" title="Remove link"><svg class="i"><use href="#i-trash"/></svg></button></form>{% endif %}</li>
+      {% else %}<li class="muted empty-chk">This task does not wait for other tasks.</li>{% endfor %}
+    </ul>
+    {% if blocking %}<p class="small muted">Other tasks wait for this one: {% for b in blocking %}<a href="{{ url_for('task_detail', task_id=b.id) }}" translate="no">#{{ b.id }} {{ b.title }}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+    {% if can_edit(t) and candidates %}
+    <form method="post" action="{{ url_for('task_deps', task_id=t.id) }}" class="chk-add">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="sr" for="depPick">Task it waits for</label>
+      <select name="blocked_by" id="depPick" required><option value="">Choose the task it waits for…</option>
+        {% for c in candidates if c.id not in blockers|map(attribute='id')|list %}<option value="{{ c.id }}">#{{ c.id }} {{ c.title }}</option>{% endfor %}</select>
+      <button class="btn btn-light sm"><svg class="i"><use href="#i-plus"/></svg> Add</button>
+    </form>{% endif %}
+
     <h3 class="sub" id="files">Files{% if files %} · {{ files|length }}{% endif %}</h3>
     <ul class="files">
       {% for f in files %}
@@ -83,12 +110,12 @@
       </li>
       {% else %}<li class="muted empty-chk">No files yet.</li>{% endfor %}
     </ul>
-    {% if files|length < 10 %}
+    {% if files|length < CFG.max_files|int %}
     <form method="post" action="{{ url_for('file_upload', task_id=t.id) }}" enctype="multipart/form-data" class="dropzone" id="dropzone">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <svg class="i"><use href="#i-clip"/></svg>
       <span>Drop files here or <label class="link">choose files<input type="file" name="file" multiple hidden accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv,.md,.json,.docx,.xlsx,.pptx,.odt,.ods,.zip,.py,.r,.ipynb,.sql"></label></span>
-      <small>PDF, pictures, Office, text, CSV or ZIP · max 5 MB each · up to 10 files per task</small>
+      <small>PDF, pictures, Office, text, CSV or ZIP · max {{ CFG.max_file_mb }} MB each · up to {{ CFG.max_files }} files per task</small>
     </form>
     {% endif %}
 
@@ -167,6 +194,9 @@
         <dt>Assignee</dt><dd><span class="who">{{ m.avatar(t.assignee_name, t.assignee_color, 'sm') }}{{ t.assignee_name or 'Unassigned' }}</span></dd>
         <dt>Due date</dt><dd>{% if t.due_date %}{{ t.due_date|nice_date }} {{ m.due(t) }}{% else %}—{% endif %}</dd>
         <dt>Project</dt><dd>{{ m.project_tag(t) or 'No project' }}</dd>
+        <dt>Start date</dt><dd>{{ t.start_date|nice_date if t.start_date else '—' }}</dd>
+        <dt>Sprint</dt><dd>{% if sprint %}<a href="{{ url_for('sprint_page', sprint_id=sprint.id) }}" translate="no">{{ sprint.name }}</a>{% else %}—{% endif %}</dd>
+        <dt>Repeat</dt><dd>{{ REPEATS[t.repeat] if t.repeat else '—' }}</dd>
         <dt>Estimate</dt><dd>{{ t.estimate_minutes|hours if t.estimate_minutes else '—' }}</dd>
         <dt>Time logged</dt><dd>{{ t.logged_minutes|hours if t.logged_minutes else '—' }}</dd>
         <dt>Created by</dt><dd>{{ t.creator_name }}</dd>

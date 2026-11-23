@@ -13,7 +13,7 @@
 <body class="public {% block body_class %}{% endblock %}">
 {% include "_icons.html" %}
 <header class="pub-bar no-print">
-  <a class="brand" href="{{ url_for('dashboard') if user else url_for('explore') }}"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="" width="30" height="30"><span>TaskFlow</span></a>
+  <a class="brand" href="{{ url_for('dashboard') if user else url_for('explore') }}"><img src="{{ url_for('brand_logo') }}" alt="" width="30" height="30"><span translate="no">{{ CFG.site_name }}</span></a>
   <nav>
     <a href="{{ url_for('explore') }}" class="{{ 'on' if request.endpoint == 'explore' }}"><svg class="i"><use href="#i-globe"/></svg> <span>Explore resumes</span></a>
     <a href="{{ url_for('about') }}" class="{{ 'on' if request.endpoint == 'about' }}"><svg class="i"><use href="#i-info"/></svg> <span>About</span></a>
@@ -23,7 +23,7 @@
     {% if user %}<a class="btn btn-light sm" href="{{ url_for('resume_list') }}"><svg class="i"><use href="#i-id"/></svg> My resumes</a>
     <a class="btn btn-primary sm" href="{{ url_for('dashboard') }}">Open TaskFlow</a>
     {% else %}<a class="btn btn-light sm" href="{{ url_for('login') }}">Sign in</a>
-    {% if settings.allow_registration == '1' %}<a class="btn btn-primary sm" href="{{ url_for('register') }}">Create a free account</a>{% endif %}{% endif %}
+    {% if CFG.allow_registration == '1' %}<a class="btn btn-primary sm" href="{{ url_for('register') }}">Create a free account</a>{% endif %}{% endif %}
   </div>
 </header>
 {% with msgs = get_flashed_messages(with_categories=true) %}

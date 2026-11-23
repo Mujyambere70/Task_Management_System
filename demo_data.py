@@ -101,6 +101,14 @@ TASKS = [
      "todo", "urgent", 0, 2, ["fly launch --no-deploy", "fly secrets set", "fly deploy", "Update README links"]),
     (2, "Accessibility check (keyboard and contrast)", "", "todo", "medium", 5, 5, []),
     (2, "Dark mode", "", "todo", "low", 3, 14, []),
+    (2, "Sprints, Gantt chart and task dependencies", "Version 3: sprint burndown and velocity, Gantt bars with arrows, "
+     "\"waits for\" links that block finishing too early.", "in_progress", "high", 0, 4,
+     ["+Sprints and burndown", "+Gantt chart", "Dependency arrows on the board"]),
+    (2, "Site administrator back office", "Accounts, workspaces, resumes, translations, messages sent, audit log, "
+     "site settings and backup restore.", "review", "urgent", 2, 2, ["+Accounts", "+Site settings", "Restore test"]),
+    (2, "Web Push, calendar feed and Slack / Telegram messages", "", "todo", "high", 2, 6, []),
+    (2, "Resume as a PDF made on the server", "Same designs as the web page, with Arabic and Chinese fonts.",
+     "todo", "medium", 1, 8, []),
     # ---- CalcWise
     (3, "Investment calculator: simple and compound interest", "", "done", "medium", 4, -15, []),
     (3, "Bond repayment calculator with chart", "Monthly repayment and total interest.", "done", "medium", 4, -11, []),
@@ -312,8 +320,70 @@ def load_demo(store):
         r = store.create_resume(user_ids[idx], title, resumes.clean_resume_data(data), theme, accent, lang)
         with store.db() as con:
             con.execute("UPDATE resumes SET visibility = 'public', views = ? WHERE id = ?", (views, r))
+    _planning_demo(store, admin, ws_ids, task_ids, today)
     with store.db() as con:
         con.execute("DELETE FROM events")
+
+
+def _planning_demo(store, admin, ws_ids, task_ids, today):
+    """Version 3 demo data: labels, two sprints (one closed, one active), "waits for" links, a weekly task and
+    start dates for the Gantt chart."""
+    labels = {}
+    for ws_i, name, color in [(0, "bug", "#ef4444"), (0, "feature", "#4f46e5"), (0, "deploy", "#0ea5e9"),
+                              (0, "design", "#ec4899"), (0, "docs", "#10b981"), (1, "lab work", "#14b8a6"),
+                              (1, "R", "#0ea5e9"), (1, "Python", "#f59e0b")]:
+        labels[name] = store.save_label(admin, ws_ids[ws_i], name, color)
+    tagged = {
+        "Printable invoices": ["feature"], "Mobile layout for checkout": ["design", "bug"],
+        "Move Yo Delivery to Gunicorn on Fly.io": ["deploy"], "Daily transfer limits and session timeout": ["feature"],
+        "Bank-style UI with real pictures": ["design"], "Write user guide: how to run the app": ["docs"],
+        "Deploy TaskFlow v2 to Fly.io with Neon PostgreSQL": ["deploy"], "Dark mode": ["design", "feature"],
+        "Sprints, Gantt chart and task dependencies": ["feature"], "Site administrator back office": ["feature"],
+        "Web Push, calendar feed and Slack / Telegram messages": ["feature"],
+        "Resume as a PDF made on the server": ["feature"], "Renew domain and SSL certificate": ["deploy"],
+        "Retry Fly.io deploy with a local build": ["deploy", "bug"], "Accessibility check (keyboard and contrast)": ["bug"],
+        "Computational statistics — lab work (variant 14)": ["lab work", "Python", "R"],
+        "Machine learning basics — lab work (variant 14)": ["lab work", "Python"],
+        "Regression exercise: compare Python and R output": ["Python", "R"],
+    }
+    ws0 = ws_ids[0]
+    with store.db() as con:
+        for title, names in tagged.items():
+            tid, ws = task_ids[title]
+            store.set_task_labels(con, ws, tid, [labels[n] for n in names])
+        # sprints of the first workspace: the last two weeks (closed) and these two weeks (active)
+        s1 = con.execute("INSERT INTO sprints (workspace_id, name, goal, start_date, end_date, status, created_by, created_at, "
+                         "closed_at) VALUES (?,?,?,?,?,?,?,?,?)", (ws0, "Sprint 1 — shop and bank", "Finish the shop checkout and the bank transfers.",
+                                                      (today - timedelta(days=20)).isoformat(),
+                                                      (today - timedelta(days=7)).isoformat(), "closed", admin,
+                                                      ts(today - timedelta(days=21), 9), ts(today - timedelta(days=7), 18))).lastrowid
+        s2 = con.execute("INSERT INTO sprints (workspace_id, name, goal, start_date, end_date, status, created_by, created_at) "
+                         "VALUES (?,?,?,?,?,?,?,?)", (ws0, "Sprint 2 — TaskFlow 3", "Planning tools, admin back office and the new deploy.",
+                                                      (today - timedelta(days=6)).isoformat(),
+                                                      (today + timedelta(days=7)).isoformat(), "active", admin,
+                                                      ts(today - timedelta(days=7), 9))).lastrowid
+        for r in con.execute("SELECT id, status, completed_at, due_date FROM tasks WHERE workspace_id = ?", (ws0,)).fetchall():
+            first_half = r["completed_at"] and r["completed_at"][:10] <= (today - timedelta(days=7)).isoformat()
+            sid = s1 if first_half else (s2 if r["status"] != "done" or r["completed_at"][:10] >= (today - timedelta(days=6)).isoformat() else None)
+            if r["due_date"] and r["due_date"] > (today + timedelta(days=9)).isoformat():
+                sid = None                                               # far away: stays in the backlog
+            con.execute("UPDATE tasks SET sprint_id = ? WHERE id = ?", (sid, r["id"]))
+        # start dates so the Gantt chart shows real lengths of work
+        for title, back in [("Sprints, Gantt chart and task dependencies", 5), ("Site administrator back office", 4),
+                            ("Web Push, calendar feed and Slack / Telegram messages", -2), ("Resume as a PDF made on the server", 1),
+                            ("Deploy TaskFlow v2 to Fly.io with Neon PostgreSQL", 1), ("Mobile layout for checkout", 4),
+                            ("Daily transfer limits and session timeout", 3), ("Printable invoices", 3)]:
+            tid, _ = task_ids[title]
+            con.execute("UPDATE tasks SET start_date = ? WHERE id = ?", ((today - timedelta(days=back)).isoformat(), tid))
+        # "waits for" links
+        for task, waits_for in [("Update GitHub profile links to fly.dev", "Deploy TaskFlow v2 to Fly.io with Neon PostgreSQL"),
+                                ("Write a LinkedIn post about TaskFlow v2", "Update GitHub profile links to fly.dev"),
+                                ("Web Push, calendar feed and Slack / Telegram messages", "Site administrator back office"),
+                                ("Resume as a PDF made on the server", "Sprints, Gantt chart and task dependencies")]:
+            con.execute("INSERT INTO task_deps (task_id, blocked_by) VALUES (?,?)", (task_ids[task][0], task_ids[waits_for][0]))
+        # a task that comes back every week
+        con.execute("UPDATE tasks SET repeat = 'weekly' WHERE id = ?", (task_ids["Weekly team sync agenda"][0],))
+        con.execute("DELETE FROM activity WHERE action = 'labels_changed'")
 
 
 DEPLOY_NOTES = """# Deploy TaskFlow v2 (Fly.io + Neon)

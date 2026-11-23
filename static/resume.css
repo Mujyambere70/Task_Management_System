@@ -1,4 +1,4 @@
-/* TaskFlow resume sheet: 3 designs (modern, classic, compact), A4 size, prints cleanly to PDF */
+/* TaskFlow resume sheet: 5 designs (modern, classic, compact, elegant, timeline), A4 size, prints cleanly to PDF */
 .cv-page .pub-main { max-width: none; padding: 0 0 30px; }
 .cv-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 24px; background: #fff; border-bottom: 1px solid #e7e9f0; }
 .cv-tool-left, .cv-tool-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -86,7 +86,34 @@ body.cv-embed { margin: 0; background: #e9ebf2; }
 .theme-compact .cv-body:not(:has(.cv-side)) { grid-template-columns: 1fr; }
 .theme-compact h2 { border-bottom: 1px solid var(--rule); padding-bottom: 3px; }
 
+/* elegant (version 3): dark side column the full height of the page, name in large thin letters */
+.theme-elegant { position: relative; display: grid; grid-template-columns: 35% 1fr; grid-template-rows: auto 1fr; }
+.theme-elegant .cv-head { position: static; grid-column: 1 / -1; display: flex; gap: 22px; align-items: center;
+  padding: 30px 34px 22px; border-bottom: 4px solid var(--accent); }
+.theme-elegant h1 { font-weight: 300; font-size: 28pt; letter-spacing: .02em; }
+.theme-elegant .cv-headline { color: var(--accent); text-transform: uppercase; letter-spacing: .14em; font-size: 9.5pt; }
+.theme-elegant .cv-photo { border-radius: 14px; border: 0; }
+.theme-elegant .cv-body { grid-column: 1 / -1; display: grid; grid-template-columns: 35% 1fr; }
+.theme-elegant .cv-side { background: #1f2533; color: #e8ebf3; padding: 24px 22px; }
+.theme-elegant .cv-side h2 { color: #fff; border-bottom: 1px solid rgba(255,255,255,.2); padding-bottom: 4px; }
+.theme-elegant .cv-side .cv-chips span { background: rgba(255,255,255,.12); color: #fff; }
+.theme-elegant .cv-side .cv-lang small { color: #b9c0cf; }
+.theme-elegant .cv-side .cv-dots i { background: rgba(255,255,255,.2); }
+.theme-elegant .cv-side .cv-dots i.on { background: var(--accent); }
+.theme-elegant .cv-main { padding: 24px 30px; }
+.theme-elegant .cv-body:not(:has(.cv-side)) { grid-template-columns: 1fr; }
+
+/* timeline (version 3): one column, every item hangs on a vertical line with a dot */
+.theme-timeline { padding: 34px 44px; }
+.theme-timeline .cv-head { display: flex; gap: 22px; align-items: center; margin-bottom: 20px; }
+.theme-timeline .cv-photo { border-color: var(--accent); }
+.theme-timeline h2 { display: inline-block; background: var(--accent); color: #fff; padding: 3px 12px; border-radius: 99px; font-size: 9pt; }
+.theme-timeline .cv-item { position: relative; padding-inline-start: 22px; margin-bottom: 0; padding-bottom: 10px; border-inline-start: 2px solid var(--rule); margin-inline-start: 6px; }
+.theme-timeline .cv-item::before { content: ""; position: absolute; inset-inline-start: -7px; top: 3px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); }
+.theme-timeline .cv-item:last-child { border-color: transparent; }
+
 @media (max-width: 820px) {
+  .theme-elegant, .theme-elegant .cv-body { grid-template-columns: 1fr; display: block; }
   .cv-page .cv-stage { padding: 0; }
   .cv { width: 100%; min-height: 0; box-shadow: none; }
   .theme-modern .cv-body, .theme-compact .cv-body { grid-template-columns: 1fr; }

@@ -21,10 +21,10 @@ import world
 HERE = os.path.dirname(os.path.abspath(__file__))
 CATALOG_DIR = os.path.join(HERE, "translations")
 SKIP_TAGS = {"script", "style", "textarea", "code", "pre"}
-TEXT_ATTRS = ("placeholder", "title", "alt", "aria-label", "data-tr")
+TEXT_ATTRS = ("placeholder", "title", "alt", "aria-label", "data-tr", "data-confirm")
 _TOKEN = re.compile(r"(<!--.*?-->|<[^>]+>)", re.S)
 _CODE = re.compile(r"(<script\b.*?</script>|<style\b.*?</style>)", re.S | re.I)
-_ATTR = re.compile(r'\b(placeholder|title|alt|aria-label|data-tr)="([^"]*)"')
+_ATTR = re.compile(r'\b(placeholder|title|alt|aria-label|data-tr|data-confirm)="([^"]*)"')
 _BUTTON_VALUE = re.compile(r'(<input\b[^>]*\btype="(?:submit|button)"[^>]*\bvalue=")([^"]*)(")', re.I)
 
 
@@ -49,6 +49,27 @@ def catalog(lang):
     return exact, patterns
 
 
+# version 3: words changed by the site administrator (Admin -> Translations) win over the built-in catalog.
+# `overrides_source(lang)` reads them from the database; they are cached until somebody changes one.
+overrides_source = None
+_overrides_cache = {}
+
+
+def clear_overrides():
+    _overrides_cache.clear()
+
+
+def overrides(lang):
+    if overrides_source is None:
+        return {}
+    if lang not in _overrides_cache:
+        try:
+            _overrides_cache[lang] = overrides_source(lang)
+        except Exception:                                      # the page must still show
+            return {}
+    return _overrides_cache[lang]
+
+
 def translate_text(text, lang=None):
     """Translate one piece of plain text (also used for alerts, emails and PDF statements)."""
     lang = lang or world.current_lang()
@@ -58,6 +79,9 @@ def translate_text(text, lang=None):
     lead = text[:len(text) - len(text.lstrip())]
     tail = text[len(text.rstrip()):]
     key = " ".join(text.split())
+    own = overrides(lang)
+    if key in own:
+        return lead + own[key] + tail
     if key in exact:
         return lead + exact[key] + tail
     for rx, value in patterns:
@@ -65,7 +89,7 @@ def translate_text(text, lang=None):
         if m:
             out = value
             for name, part in m.groupdict().items():
-                out = out.replace("{" + name[1:] + "}", exact.get(part, part))
+                out = out.replace("{" + name[1:] + "}", own.get(part) or exact.get(part, part))
             return lead + out + tail
     return text
 

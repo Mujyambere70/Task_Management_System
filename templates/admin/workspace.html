@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ w.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><a class="back" href="{{ url_for('admin_workspaces') }}">← Workspaces</a>
+    <h1><span class="dot" style="background:{{ w.color }}"></span> <span translate="no">{{ w.name }}</span></h1>
+    <p class="muted">{{ row.members }} members · {{ row.projects }} projects · {{ row.tasks }} tasks · {{ row.trashed }} in the trash</p></div>
+  <div class="actions">
+    <a class="btn btn-light" href="{{ url_for('admin_workspace_export', ws=w.id) }}"><svg class="i"><use href="#i-download"/></svg> Export (JSON)</a>
+    <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-primary" name="action" value="open"><svg class="i"><use href="#i-eye"/></svg> Open workspace</button></form>
+  </div>
+</div>
+{% include "admin/_nav.html" %}
+<div class="grid-2">
+<section class="card settings-form">
+  <h2>Settings</h2>
+  <form method="post" class="form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="details">
+    <label>Name<input name="name" value="{{ w.name }}" required maxlength="60"></label>
+    <label>Description<textarea name="description" rows="2" maxlength="300">{{ w.description or '' }}</textarea></label>
+    <label>Default priority of new tasks<select name="default_priority">{% for k, n in PRIORITIES %}<option value="{{ k }}" {{ 'selected' if w.default_priority == k }}>{{ n }}</option>{% endfor %}</select></label>
+    <fieldset><legend>Colour</legend><div class="swatches">{% for c in COLORS %}<label><input type="radio" name="color" value="{{ c }}" {{ 'checked' if w.color == c }}><i style="background:{{ c }}"></i></label>{% endfor %}</div></fieldset>
+    <div class="form-actions"><button class="btn btn-primary">Save</button></div>
+  </form>
+</section>
+<section class="card">
+  <h2>Invite link</h2>
+  <div class="copy-row"><input readonly value="{{ invite_link }}" aria-label="Invite link" translate="no"><button type="button" class="btn btn-light sm" data-copy-text="{{ invite_link }}"><svg class="i"><use href="#i-copy"/></svg> Copy</button></div>
+  <form method="post" data-confirm="Make a new link? The old link will stop working."><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-ghost sm" name="action" value="invite">Make a new link</button></form>
+  <h2 style="margin-top:18px">Add a member</h2>
+  <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="add">
+    <input type="email" name="email" required placeholder="Email of an account" aria-label="Email">
+    <select name="role" aria-label="Role"><option value="member">Member</option><option value="admin">Admin</option></select>
+    <button class="btn btn-light sm"><svg class="i"><use href="#i-plus"/></svg> Add</button></form>
+</section>
+</div>
+
+<section class="card">
+  <div class="card-head"><h2>Members</h2><span class="muted small">{{ members|length }}</span></div>
+  <table class="table"><thead><tr><th>Person</th><th>Role</th><th></th></tr></thead><tbody>
+  {% for p in members %}
+    <tr><td><a class="who" href="{{ url_for('admin_user', user_id=p.id) }}">{{ m.avatar(p.name, p.color, 'xs') }} <span translate="no">{{ p.name }}</span></a> <small class="muted" translate="no">{{ p.email }}</small></td>
+      <td><form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="role"><input type="hidden" name="user" value="{{ p.id }}">
+        <select name="role" onchange="this.form.submit()" aria-label="Role">{% for r, n in [('member', 'Member'), ('admin', 'Admin')] %}<option value="{{ r }}" {{ 'selected' if p.role == r }}>{{ n }}</option>{% endfor %}</select></form></td>
+      <td><form method="post" data-confirm="Remove this person from the workspace?"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="remove"><input type="hidden" name="user" value="{{ p.id }}">
+        <button class="btn btn-danger-ghost sm">Remove</button></form></td></tr>
+  {% endfor %}
+  </tbody></table>
+</section>
+
+<div class="grid-3">
+  <section class="card"><h2>Projects</h2><ul class="result-list">{% for p in projects %}<li><span class="dot" style="background:{{ p.color }}"></span> <span translate="no">{{ p.name }}</span> <small class="muted">{{ p.total }} tasks{{ ' · archived' if p.archived }}</small></li>{% else %}<li class="empty small">No projects.</li>{% endfor %}</ul></section>
+  <section class="card"><h2>Sprints</h2><ul class="result-list">{% for s in sprints %}<li><span translate="no">{{ s.name }}</span> <small class="muted"><span>{{ SPRINT_STATES[s.status] }}</span> · {{ s.percent }}%</small></li>{% else %}<li class="empty small">No sprints.</li>{% endfor %}</ul></section>
+  <section class="card"><h2>Labels</h2><p>{% for lb in labels %}<span class="label-chip" style="--c: {{ lb.color }}" translate="no">{{ lb.name }}</span> {% else %}<span class="muted small">No labels.</span>{% endfor %}</p></section>
+</div>
+
+<section class="card danger-item red">
+  <div><b class="red">Delete this workspace</b><p class="muted small">All projects, tasks, comments, files, time and sprints of this workspace are deleted. The accounts are kept.</p></div>
+  <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="delete">
+    <input name="confirm" placeholder="Type the workspace name" required autocomplete="off" aria-label="Workspace name to confirm">
+    <button class="btn btn-danger sm">Delete workspace</button></form>
+</section>
+{% endblock %}

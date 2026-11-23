@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Accounts{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Accounts</h1><p class="muted">{{ 'Accounts on the site: {0}. Open an account to change anything in it.'|tr|replace('{0}', people|length) }}</p></div>
+  <button class="btn btn-primary" data-open="newUser"><svg class="i"><use href="#i-plus"/></svg> Add account</button></div>
+{% include "admin/_nav.html" %}
+<form class="filters" method="get"><input type="search" name="q" value="{{ q }}" placeholder="Name, email or job…"><button class="btn btn-dark">Search</button>
+  {% if q %}<a class="btn btn-ghost" href="{{ url_for('admin_users') }}">Reset</a>{% endif %}</form>
+<section class="card flush">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Person</th><th>Role</th><th>Workspaces</th><th>Open tasks</th><th>Resumes</th><th>Last sign in</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for p in people %}
+      <tr class="{{ 'inactive' if not p.active }}">
+        <td><a class="who" href="{{ url_for('admin_user', user_id=p.id) }}">{% if p.has_photo %}<img class="avatar xs" src="{{ url_for('user_photo', user_id=p.id) }}" alt="">{% else %}{{ m.avatar(p.name, p.color, 'xs') }}{% endif %}
+          <span><b translate="no">{{ p.name }}</b>{% if p.id == user.id %} <small class="muted">(me)</small>{% endif %}<br><small class="muted" translate="no">{{ p.email }}</small></span></a></td>
+        <td>{% if p.role == 'admin' %}<span class="pill st-review"><svg class="i"><use href="#i-shield"/></svg> Site administrator</span>{% else %}<span class="pill">Member</span>{% endif %}</td>
+        <td>{{ p.workspaces }}</td><td>{{ p.open_tasks }}</td><td>{{ p.resumes }}</td>
+        <td>{{ p.last_login|ago if p.last_login else '—' }}</td>
+        <td>{% if p.active %}<span class="pill st-done">Active</span>{% else %}<span class="pill">Turned off</span>{% endif %}{% if p.totp_enabled %} <span class="pill" title="Two-factor login"><svg class="i"><use href="#i-lock"/></svg> 2FA</span>{% endif %}</td>
+      </tr>
+    {% else %}<tr><td colspan="7"><div class="empty">Nothing found.</div></td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+<dialog id="newUser" class="dialog">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2>Add account</h2>
+    <label>Full name<input name="name" required maxlength="80"></label>
+    <label>Email<input type="email" name="email" required maxlength="120"></label>
+    <label>Password<input type="password" name="password" required minlength="8" autocomplete="new-password"><small class="muted">At least 8 characters with a letter and a number. The person can change it later.</small></label>
+    <label>Job title<input name="job_title" maxlength="80"></label>
+    <div class="row2"><label>Workspace<select name="workspace"><option value="">None yet</option>{% for w in workspaces %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></label>
+      <label>Role there<select name="ws_role"><option value="member">Member</option><option value="admin">Admin</option></select></label></div>
+    <label class="check-row"><input type="checkbox" name="site_admin" value="1"> Make this person a site administrator too</label>
+    <div class="dialog-actions"><button type="button" class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary">Add account</button></div>
+  </form>
+</dialog>
+{% endblock %}

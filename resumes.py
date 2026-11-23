@@ -4,7 +4,7 @@ resumes.py - the resume (CV) builder.
 Every person can make one or more resumes: a header (name, headline, photo, contacts, links),
 a summary and any number of sections (experience, education, projects, skills, certificates,
 languages, awards, interests, references, free text or sections with an own title).
-Sections can be reordered and hidden. A resume has a design (3 layouts, any accent color,
+Sections can be reordered and hidden. A resume has a design (5 layouts, any accent color,
 3 fonts), a language for its headings, and a visibility:
 
     private  only the owner sees it
@@ -23,7 +23,8 @@ import unicodedata
 
 from core import TaskError, now
 
-THEMES = {"modern": "Modern (side column)", "classic": "Classic (one column)", "compact": "Compact (two columns)"}
+THEMES = {"modern": "Modern (side column)", "classic": "Classic (one column)", "compact": "Compact (two columns)",
+          "elegant": "Elegant (dark side column)", "timeline": "Timeline (one column with a time line)"}
 FONTS = {"inter": "Inter (sans-serif)", "serif": "Merriweather (serif)", "slab": "Roboto Slab"}
 VISIBILITY = {"private": "Only me", "link": "Anyone with the link", "public": "Public - listed in Explore"}
 RESERVED = {"new", "explore", "edit", "import", "admin", "api", "static", "photo", "print"}
@@ -211,8 +212,9 @@ class ResumesMixin:
         data = clean_resume_data(data or blank_resume(u["name"], u.get("job_title", ""), u["email"]))
         title = _text(title, 60) or "My resume"
         with self.db() as con:
-            if con.execute("SELECT COUNT(*) FROM resumes WHERE user_id = ?", (user_id,)).fetchone()[0] >= 10:
-                raise TaskError("You can have at most 10 resumes.")
+            most = self.site_int("max_resumes") if hasattr(self, "site_int") else 10
+            if con.execute("SELECT COUNT(*) FROM resumes WHERE user_id = ?", (user_id,)).fetchone()[0] >= most:
+                raise TaskError(f"You can have at most {most} resumes.")
             slug = self._unique_slug(con, slugify(data["name"]) or "resume-" + secrets.token_hex(3))
             rid = con.execute("INSERT INTO resumes (user_id, slug, title, theme, accent, lang, data, created_at, updated_at) "
                               "VALUES (?,?,?,?,?,?,?,?,?)",

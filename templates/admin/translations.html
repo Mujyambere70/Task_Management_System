@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Translations{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Translations</h1><p class="muted">Change any word of the interface. Your text wins over the built-in translation. Leave the box empty to use the built-in text again.</p></div></div>
+{% include "admin/_nav.html" %}
+<form class="filters" method="get">
+  <select name="lang" onchange="this.form.submit()" aria-label="Language">{% for code, name in languages.items() if code != 'en' %}<option value="{{ code }}" {{ 'selected' if tr_lang == code }} translate="no">{{ name }}</option>{% endfor %}</select>
+  <input type="search" name="q" value="{{ q }}" placeholder="Find a word or sentence…">
+  <select name="only" aria-label="Show"><option value="">All texts</option><option value="changed" {{ 'selected' if only == 'changed' }}>Only texts I changed</option></select>
+  <button class="btn btn-dark">Show</button>
+</form>
+<p class="muted small">{{ 'Built-in texts: {0} · changed by you: {1} · shown: {2} (at most 60; search to find others)'|tr|replace('{0}', total)|replace('{1}', changed)|replace('{2}', rows|length) }}</p>
+<section class="card flush"><div class="table-wrap"><table class="table tr-table">
+  <thead><tr><th>English</th><th>Built-in</th><th>Your text</th></tr></thead>
+  <tbody>
+  {% for en, built, mine in rows %}
+    <tr class="{{ 'changed' if mine }}"><td translate="no">{{ en }}</td><td translate="no" class="muted">{{ built or '—' }}</td>
+      <td><form method="post" class="inline-form" translate="no"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="lang" value="{{ tr_lang }}"><input type="hidden" name="english" value="{{ en }}"><input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="only" value="{{ only }}">
+        <input name="text" value="{{ mine }}" maxlength="500" aria-label="Your text" dir="{{ 'rtl' if tr_lang == 'ar' else 'auto' }}"><button class="btn btn-light sm">Save</button></form></td></tr>
+  {% else %}<tr><td colspan="3"><div class="empty">Nothing found.</div></td></tr>{% endfor %}
+  </tbody></table></div></section>
+{% endblock %}

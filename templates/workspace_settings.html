@@ -30,12 +30,38 @@
     </form>
   </section>
 </div>
+<div class="grid-2">
+  <section class="card settings-form" id="chat">
+    <h2><svg class="i"><use href="#i-chat"/></svg> Team chat</h2>
+    <p class="muted small">Post a short message to Slack or Telegram when a task is made, when a task is finished and for deadline reminders.</p>
+    <form method="post" class="form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="chat">
+      <label>Slack incoming webhook<input name="slack_url" value="{{ workspace.slack_url or '' }}" placeholder="https://hooks.slack.com/services/…" autocomplete="off" translate="no">
+        <small class="muted">In Slack: Apps → Incoming Webhooks → Add to a channel. Leave empty to turn it off.</small></label>
+      <label>Telegram chat<input name="telegram_chat" value="{{ workspace.telegram_chat or '' }}" placeholder="-1001234567890 or @myteam" translate="no">
+        <small class="muted">{% if telegram_ready %}Add the site's bot to the group, then write the chat number here.{% else %}The site administrator must add TELEGRAM_BOT_TOKEN to the server first.{% endif %}</small></label>
+      <div class="form-actions"><button class="btn btn-primary">Save chat settings</button></div>
+    </form>
+  </section>
+  <section class="card" id="import">
+    <h2><svg class="i"><use href="#i-database"/></svg> Data of this workspace</h2>
+    <p class="muted small">Download everything (projects, tasks, comments, labels, sprints, time) as one JSON file.</p>
+    <a class="btn btn-light sm" href="{{ url_for('workspace_export') }}"><svg class="i"><use href="#i-download"/></svg> Export workspace (JSON)</a>
+    <h3 class="sub">Import tasks from CSV</h3>
+    <p class="muted small">First row: column names. <b>title</b> is needed; you can also use description, status, priority, due_date, start_date, assignee (email), project, estimate and labels (separated by ;). New projects and labels are made. At most 500 rows. The tasks CSV of TaskFlow works too.</p>
+    <form method="post" action="{{ url_for('workspace_import') }}" enctype="multipart/form-data" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="file" name="file" accept=".csv,text/csv" required aria-label="CSV file">
+      <button class="btn btn-light sm"><svg class="i"><use href="#i-upload"/></svg> Import</button>
+    </form>
+  </section>
+</div>
 <section class="card">
   <h2>Clean up</h2>
   <div class="danger-list">
     <div class="danger-item">
-      <div><b>Remove old completed tasks</b><p class="muted small">Delete tasks of this workspace that were finished a long time ago (with their comments, files and time entries).</p></div>
-      <form method="post" data-confirm="Delete these completed tasks? This cannot be undone.">
+      <div><b>Remove old completed tasks</b><p class="muted small">Move tasks of this workspace that were finished a long time ago to the trash. They can be restored from the Trash page until it is emptied.</p></div>
+      <form method="post" data-confirm="Move these completed tasks to the trash?">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="clean_tasks">
         <select name="days"><option value="90">Done over 90 days ago</option><option value="30">Done over 30 days ago</option><option value="0">All completed tasks</option></select>
         <button class="btn btn-light sm">Remove</button>

@@ -4,3 +4,7 @@ psycopg[binary]>=3.1      # PostgreSQL driver (Neon). Not needed for the SQLite 
 Babel>=2.14               # dates and month names in 7 languages
 Pillow>=10.0              # resume photos (cut to 400 x 400)
 flask-sock>=0.7           # real-time board updates (WebSocket)
+cryptography>=42.0        # Web Push: VAPID keys and message encryption
+reportlab>=4.0            # resume PDF made on the server
+arabic-reshaper>=3.0      # Arabic letters joined correctly in the PDF
+python-bidi>=0.4          # right-to-left order for Arabic in the PDF

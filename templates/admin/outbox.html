@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Messages sent{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Messages sent</h1><p class="muted">Every email, Slack, Telegram and push message the site made, and what happened to it. Demo addresses (.demo, .example) are never sent.</p></div></div>
+{% include "admin/_nav.html" %}
+<div class="grid-2">
+<section class="card">
+  <h2>Services</h2>
+  <ul class="services">
+    <li><svg class="i"><use href="#i-mail"/></svg><div><b>Email</b><small>{% if provider %}<span translate="no">{{ provider }}</span>{% else %}Not set up: add BREVO_API_KEY or SMTP_HOST to the server secrets.{% endif %}</small></div><span class="pill {{ 'st-done' if provider else 'st-todo' }}">{{ 'On' if provider else 'Off' }}</span></li>
+    <li><svg class="i"><use href="#i-chat"/></svg><div><b>Telegram</b><small>{{ 'The bot can post to workspace chats.' if telegram else 'Add TELEGRAM_BOT_TOKEN to the server secrets.' }}</small></div><span class="pill {{ 'st-done' if telegram else 'st-todo' }}">{{ 'On' if telegram else 'Off' }}</span></li>
+    <li><svg class="i"><use href="#i-share"/></svg><div><b>Slack</b><small>Each workspace admin adds a Slack webhook in Workspace settings.</small></div><span class="pill st-done">Ready</span></li>
+    <li><svg class="i"><use href="#i-bell"/></svg><div><b>Push notifications</b><small>Built in. Keys are made by the site.</small></div><span class="pill st-done">On</span></li>
+  </ul>
+</section>
+<section class="card">
+  <h2>Send a test email</h2>
+  <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="email" name="to" required placeholder="Email address" aria-label="Email address"><button class="btn btn-light sm"><svg class="i"><use href="#i-mail"/></svg> Send test</button></form>
+  <p class="small muted">The result is shown in the list below.</p>
+</section>
+</div>
+<div class="tabs">{% for key, label in [('', 'All'), ('email', 'Email'), ('push', 'Push'), ('slack', 'Slack'), ('telegram', 'Telegram')] %}<a href="{{ url_for('admin_outbox', channel=key or None) }}" class="{{ 'on' if channel == key }}">{{ label }}</a>{% endfor %}</div>
+<section class="card flush"><div class="table-wrap"><table class="table">
+  <thead><tr><th>When</th><th>Channel</th><th>To</th><th>Subject</th><th>Result</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr><td>{{ r.created_at|ago }}</td><td>{{ r.channel }}</td><td translate="no">{{ r.to_addr }}</td><td translate="no" title="{{ r.body }}">{{ r.subject|truncate(60) }}</td>
+      <td><span class="pill {{ 'st-done' if r.status == 'sent' else 'st-todo' if r.status.startswith('not sent') or r.status.startswith('failed') else 'st-review' }}">{{ r.status }}</span></td></tr>
+  {% else %}<tr><td colspan="5"><div class="empty">No messages yet.</div></td></tr>{% endfor %}
+  </tbody></table></div></section>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ CFG.site_name }}{% endblock %}
+{% block page %}
+<div class="error-page">
+  <img src="{{ url_for('brand_logo') }}" alt="" width="56" height="56">
+  <b class="code"><svg class="i" style="width:56px;height:56px"><use href="#i-settings"/></svg></b>
+  <h1>We are making the site better</h1>
+  <p class="muted">{{ CFG.maintenance_text or 'The site is closed for a short time. Please come back soon.' }}</p>
+  {% if user %}<form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-light">Sign out</button></form>
+  {% else %}<a class="btn btn-light" href="{{ url_for('login') }}">Administrator sign in</a>{% endif %}
+</div>
+{% endblock %}
