@@ -56,7 +56,7 @@ class Notifier:
         provider = self.email_provider()
         sender = self.env["ALERT_EMAIL_FROM"]
         if provider == "brevo":
-            payload = {"sender": {"name": self.env.get("ALERT_EMAIL_NAME", "Yo Delivery"), "email": sender}, "to": [{"email": to}],
+            payload = {"sender": {"name": self.env.get("ALERT_EMAIL_NAME", "TaskFlow"), "email": sender}, "to": [{"email": to}],
                        "subject": subject, "textContent": text}
             if attachment:
                 payload["attachment"] = [{"name": attachment[0], "content": base64.b64encode(attachment[1]).decode()}]
