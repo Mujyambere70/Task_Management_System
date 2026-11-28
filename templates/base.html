@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 {% block head %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}" style="--primary: {{ CFG.accent }}; --primary-d: color-mix(in srgb, {{ CFG.accent }} 85%, #000); --primary-l: color-mix(in srgb, {{ CFG.accent }} 9%, #fff)" {% if user %}data-live="{{ url_for('api_events') }}" data-ws="{{ '1' if config.WEBSOCKETS else '0' }}" data-me="{{ user.id }}"{% endif %}>
+<body class="{% block body_class %}{% endblock %}" data-theme="{{ theme }}" style="--primary: {{ CFG.accent }}; --primary-d: color-mix(in srgb, {{ CFG.accent }} 85%, #000); --primary-l: color-mix(in srgb, {{ CFG.accent }} 9%, #fff)" {% if user %}data-live="{{ url_for('api_events') }}" data-ws="{{ '1' if config.WEBSOCKETS else '0' }}" data-me="{{ user.id }}"{% endif %}>
 {% include "_icons.html" %}
 {% block page %}
 <div class="layout">
@@ -46,16 +46,27 @@
       <a href="{{ url_for('task_list', creator=user.id) }}" class="{{ 'on' if ep == 'task_list' and request.args.get('creator') == user.id|string }}"><svg class="i"><use href="#i-edit"/></svg> Created by me</a>
       <a href="{{ url_for('board') }}" class="{{ 'on' if ep == 'board' and not request.args.get('project') }}"><svg class="i"><use href="#i-board"/></svg> Board</a>
       <a href="{{ url_for('task_list') }}" class="{{ 'on' if ep in ('task_list','task_detail','task_edit','task_new') and request.args.get('assignee') != user.id|string and request.args.get('creator') != user.id|string }}"><svg class="i"><use href="#i-list"/></svg> All tasks</a>
-      <a href="{{ url_for('calendar_view') }}" class="{{ 'on' if ep == 'calendar_view' }}"><svg class="i"><use href="#i-calendar"/></svg> Calendar</a>
+      <a href="{{ url_for('calendar_view') }}" class="{{ 'on' if ep in ('calendar_view', 'calendar_import') }}"><svg class="i"><use href="#i-calendar"/></svg> Calendar</a>
       <a href="{{ url_for('sprints') }}" class="{{ 'on' if ep in ('sprints', 'sprint_page') }}"><svg class="i"><use href="#i-flag"/></svg> Sprints</a>
       <a href="{{ url_for('gantt') }}" class="{{ 'on' if ep == 'gantt' }}"><svg class="i"><use href="#i-gantt"/></svg> Gantt chart</a>
       <a href="{{ url_for('labels') }}" class="{{ 'on' if ep == 'labels' }}"><svg class="i"><use href="#i-tag"/></svg> Labels</a>
+      <a href="{{ url_for('templates_page') }}" class="{{ 'on' if ep == 'templates_page' }}"><svg class="i"><use href="#i-copy"/></svg> Templates</a>
       <a href="{{ url_for('reports') }}" class="{{ 'on' if ep == 'reports' }}"><svg class="i"><use href="#i-chart"/></svg> Reports</a>
       <a href="{{ url_for('team') }}" class="{{ 'on' if ep == 'team' }}"><svg class="i"><use href="#i-users"/></svg> Team</a>
-      {% if user.role == 'admin' %}<a href="{{ url_for('workspace_settings') }}" class="{{ 'on' if ep == 'workspace_settings' }}"><svg class="i"><use href="#i-settings"/></svg> Workspace settings</a>{% endif %}
+      {% if user.role == 'admin' %}<a href="{{ url_for('workspace_settings') }}" class="{{ 'on' if ep == 'workspace_settings' }}"><svg class="i"><use href="#i-settings"/></svg> Workspace settings</a>
+      <a href="{{ url_for('workspace_tools', section='board') }}" class="{{ 'on' if ep == 'workspace_tools' }}"><svg class="i"><use href="#i-bolt"/></svg> Workspace tools</a>{% endif %}
       <a href="{{ url_for('trash') }}" class="{{ 'on' if ep == 'trash' }}"><svg class="i"><use href="#i-trash"/></svg> Trash</a>
       {% if user.site_admin %}<a href="{{ url_for('admin_panel') }}" class="{{ 'on' if ep.startswith('admin_') }}"><svg class="i"><use href="#i-database"/></svg> Site admin</a>{% endif %}
     </nav>
+    {% if saved_views %}
+    <div class="nav-title">Saved views</div>
+    <nav class="nav views-nav">
+      {% for v in saved_views %}
+      <a href="{{ url_for('board' if v.page == 'board' else 'task_list') }}?{{ v.query }}" class="{{ 'on' if request.query_string.decode() == v.query and v.query }}">
+        <svg class="i"><use href="#i-{{ 'board' if v.page == 'board' else 'list' }}"/></svg> <span translate="no">{{ v.name }}</span></a>
+      {% endfor %}
+    </nav>
+    {% endif %}
     <div class="nav-title">Projects <a href="{{ url_for('projects') }}" title="All projects">View all</a></div>
     <nav class="nav projects-nav">
       {% for p in nav_projects %}
@@ -99,6 +110,8 @@
         </form>
         {% endif %}
         <span class="today">{{ fmt_date(today, 'EEEE, d MMMM') }}</span>
+        <button type="button" class="icon-btn" id="paletteBtn" title="Quick actions (Ctrl+K)" aria-label="Quick actions"><svg class="i"><use href="#i-bolt"/></svg></button>
+        <button type="button" class="icon-btn" id="themeBtn" title="Light / dark" aria-label="Light or dark theme" data-url="{{ url_for('set_theme') }}"><svg class="i"><use href="#i-eye"/></svg></button>
         <span class="live-dot" id="liveDot" title="Live updates"></span>
         {% include "_lang.html" %}
         <a class="icon-btn bell" href="{{ url_for('notifications') }}" title="Notifications">
@@ -117,6 +130,24 @@
   </main>
 </div>
 <div class="toasts live-toasts" id="liveToasts"></div>
+<dialog class="palette" id="palette" aria-label="Quick actions">
+  <input id="paletteInput" placeholder="Type a page or a command… (Enter = search tasks)" aria-label="Quick actions" autocomplete="off">
+  <ul id="paletteList" role="listbox"></ul>
+  <ul class="palette-help small muted">
+    <li><kbd>Ctrl</kbd> <kbd>K</kbd> <span>quick actions</span></li><li><kbd>/</kbd> <span>search</span></li><li><kbd>n</kbd> <span>new task</span></li>
+    <li><kbd>g</kbd> <kbd>b</kbd> <span>board</span></li><li><kbd>g</kbd> <kbd>t</kbd> <span>all tasks</span></li><li><kbd>g</kbd> <kbd>d</kbd> <span>dashboard</span></li><li><kbd>Esc</kbd> <span>close</span></li>
+  </ul>
+</dialog>
+<template id="paletteExtra">
+  <a href="{{ url_for('task_new') }}">New task</a>
+  <a href="{{ url_for('templates_page') }}">Task templates</a>
+  <a href="{{ url_for('calendar_import') }}">Calendar import</a>
+  <a href="{{ url_for('estimate_report') }}">Estimate accuracy</a>
+  <a href="{{ url_for('developer') }}">API keys</a>
+  <a href="{{ url_for('profile') }}">My profile</a>
+  <a href="{{ url_for('install') }}">Install the app</a>
+  <a href="{{ url_for('translate_suggest') }}">Suggest a translation</a>
+</template>
 {% endblock %}
 <script>window.TF = {{ {'lang': lang, 'csrf': csrf_token, 'now': server_now, 'strings': {
   'Saving…': 'Saving…'|tr, 'Saved': 'Saved'|tr, 'Not saved:': 'Not saved:'|tr, 'Copied!': 'Copied!'|tr,
@@ -127,8 +158,10 @@
   'Notifications are on for this device.': 'Notifications are on for this device.'|tr,
   'Notifications are off for this device.': 'Notifications are off for this device.'|tr,
   'This browser cannot show notifications.': 'This browser cannot show notifications.'|tr,
-  'You blocked notifications for this site in the browser.': 'You blocked notifications for this site in the browser.'|tr}}|tojson }};</script>
+  'You blocked notifications for this site in the browser.': 'You blocked notifications for this site in the browser.'|tr,
+  'Theme: like the device': 'Theme: like the device'|tr, 'Theme: light': 'Theme: light'|tr, 'Theme: dark': 'Theme: dark'|tr}}|tojson }};</script>
 <script src="{{ url_for('static', filename='app.js') }}"></script>
+<script src="{{ url_for('static', filename='v4.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

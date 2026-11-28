@@ -13,6 +13,7 @@ Demo people (emails ending with .demo, example.com ...) are never emailed.
 import hashlib
 import re
 import secrets
+import threading
 import time
 from datetime import date, datetime, timedelta
 
@@ -151,12 +152,26 @@ class NoticesMixin:
         if not force and time.time() - NoticesMixin._last_jobs < 600:
             return None
         NoticesMixin._last_jobs = time.time()
+        if not force and hasattr(self, "claim_jobs") and not self.claim_jobs():
+            return None                                  # version 4: another worker or server just ran them
         sent = self.send_reminders()
         cutoff = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S")
         with self.db() as con:
             con.execute("DELETE FROM events WHERE created_at < ?", (cutoff,))
         purged = self.empty_old_trash() if hasattr(self, "empty_old_trash") else 0
-        return {"reminders": sent, "trash_emptied": purged}
+        out = {"reminders": sent, "trash_emptied": purged}
+        if hasattr(self, "v4_housekeeping"):          # version 4: retries, weekly digest, calendar subscriptions
+            if force or self.http is not None:
+                out.update(self.v4_housekeeping())
+            else:                                     # network work must not slow down the page
+                threading.Thread(target=self._v4_jobs_quietly, daemon=True).start()
+        return out
+
+    def _v4_jobs_quietly(self):
+        try:
+            self.v4_housekeeping()
+        except Exception:
+            pass
 
     # ================================================================ live events
     def latest_event_id(self):

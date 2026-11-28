@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Suggest a translation{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Suggest a translation</h1><p class="muted">Do you see words that are wrong or sound strange in your language? Tell us the better words. The site administrator checks every suggestion before it is used.</p></div>
+</div>
+<section class="card settings-form">
+  <form method="get" class="inline-form mb">
+    <label>Language <select name="lang" onchange="this.form.submit()" translate="no">{% for k, v in langs.items() %}<option value="{{ k }}" {{ 'selected' if s_lang == k }}>{{ v }}</option>{% endfor %}</select></label>
+    <input name="english" value="{{ english }}" placeholder="English text from the page" aria-label="English text" translate="no">
+    <button class="btn btn-light sm">Show the words used now</button>
+  </form>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="lang" value="{{ s_lang }}">
+    <label>English text<input name="english" value="{{ english }}" required maxlength="500" translate="no"></label>
+    {% if current and current != english %}<p class="small muted">Now: <span translate="no">{{ current }}</span></p>{% endif %}
+    <label>Better words<textarea name="text" rows="3" required maxlength="1000" translate="no">{{ current if current != english else '' }}</textarea>
+      <small>Keep gaps like {0} exactly as they are.</small></label>
+    <label>Note (optional)<input name="note" maxlength="300" placeholder="Why is it better?"></label>
+    <div class="form-actions"><button class="btn btn-primary">Send suggestion</button></div>
+  </form>
+</section>
+{% endblock %}

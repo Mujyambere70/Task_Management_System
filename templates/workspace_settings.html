@@ -3,7 +3,8 @@
 {% block content %}
 <div class="page-head">
   <div><h1>Workspace settings</h1><p class="muted">{{ 'Only admins of {0} see this page.'|tr|replace('{0}', workspace.name) }}</p></div>
-  <a class="btn btn-light" href="{{ url_for('team') }}"><svg class="i"><use href="#i-users"/></svg> Members</a>
+  <div class="actions"><a class="btn btn-light" href="{{ url_for('workspace_tools', section='board') }}"><svg class="i"><use href="#i-bolt"/></svg> Columns, fields, automations, webhooks</a>
+  <a class="btn btn-light" href="{{ url_for('team') }}"><svg class="i"><use href="#i-users"/></svg> Members</a></div>
 </div>
 <div class="grid-2">
   <section class="card settings-form">

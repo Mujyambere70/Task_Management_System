@@ -1,7 +1,8 @@
 <nav class="tabs admin-tabs" aria-label="Site administration">
   {% for key, ep, label in [('overview', 'admin_panel', 'Overview'), ('site', 'admin_site', 'Site settings'), ('users', 'admin_users', 'Accounts'),
       ('workspaces', 'admin_workspaces', 'Workspaces'), ('resumes', 'admin_resumes', 'Resumes'), ('translations', 'admin_translations', 'Translations'),
-      ('outbox', 'admin_outbox', 'Messages sent'), ('audit', 'admin_audit', 'Audit log')] %}
+      ('suggestions', 'admin_suggestions', 'Suggested words'), ('outbox', 'admin_outbox', 'Messages sent'),
+      ('audit', 'admin_audit', 'Audit log'), ('system', 'admin_system', 'System')] %}
   <a href="{{ url_for(ep) }}" class="{{ 'on' if section == key }}">{{ label }}</a>
   {% endfor %}
 </nav>

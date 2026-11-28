@@ -10,6 +10,12 @@ Database: SQLite file taskflow.db on your computer, or PostgreSQL when DATABASE_
 Version 3: sprints, Gantt chart, labels, dependencies, recurring tasks, search, trash, iCal feed, Slack / Telegram,
 Web Push, suggested estimates, resume PDF; and a back office where the site administrator manages everything
 (planning_views.py, admin_views.py).
+
+Version 4: custom board columns with WIP limits, custom fields, automation rules, saved views, task templates,
+REST API with personal keys, signed webhooks, retries of failed emails, weekly digest, calendar import and
+subscriptions, a better estimate, S3 file storage, Google / Microsoft sign-in, translation suggestions,
+sign-in limits, security headers, compressed pages, dark mode, command palette and an offline page
+(v4_store.py, v4_views.py, oidc.py, s3.py, livebus.py).
 """
 
 import calendar
@@ -34,8 +40,14 @@ from core import TaskError, fmt_minutes, parse_duration
 from store import COLORS, PRIORITIES, PRIORITY_NAMES, REPEATS, STATUS_NAMES, STATUSES, LIVE_SIGNAL, Store
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
+       "img-src 'self' data: blob:; connect-src 'self' ws: wss:; frame-ancestors 'self'; base-uri 'self'; "
+       "object-src 'none'; form-action 'self'")
+GZIP_TYPES = {"text/html", "application/json", "text/css", "application/javascript", "text/javascript", "text/csv",
+              "text/calendar", "image/svg+xml"}
 DEVELOPER = {"name": "Jean Michel Mujyambere", "github": "https://github.com/Mujyambere70"}
-VERSION = "3.0"
+VERSION = "4.0"
 
 
 def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=None, env=None):
@@ -57,6 +69,11 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
     )
     i18n.overrides_source = store.ui_overrides          # words changed in Admin -> Translations
     i18n.clear_overrides()
+    if env.get("DATABASE_URL") and store.is_postgres and app.config["JOBS"] and env.get("LIVE_BUS", "1") != "0":
+        import livebus                                   # live board updates across processes (PostgreSQL)
+        from store import _wake_listeners
+        livebus.Listener(lambda: store.database._driver.connect(livebus.direct_url(store.database.target), autocommit=True),
+                         _wake_listeners).start()
     if seed and store.count_users() == 0:
         from demo_data import load_demo
         load_demo(store)
@@ -104,6 +121,13 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
     def base_url():
         return env.get("APP_URL", "").rstrip("/") + "/" if env.get("APP_URL") else request.host_url
 
+    def client_ip():
+        """Fly.io puts the visitor's address in Fly-Client-IP; elsewhere the direct address is used."""
+        return (request.headers.get("Fly-Client-IP") if env.get("FLY_APP_NAME") else None) or request.remote_addr or ""
+
+    app.client_ip = client_ip
+    app.finish_login = lambda u, remember: finish_login(u, remember)
+
     def start_session(u, remember=False):
         session.clear()
         session["uid"] = u["id"]
@@ -143,14 +167,15 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
             g.user = dict(u, site_admin=u["role"] == "admin", role=role, guest_admin=not store.member_role(ws, u["id"]))
         if "csrf" not in session:
             session["csrf"] = secrets.token_hex(16)
-        if request.method == "POST" and request.endpoint not in ("cron_run",):
+        g.api = request.path.startswith("/api/v1/")          # the REST API signs in with a key, not a cookie
+        if request.method == "POST" and request.endpoint not in ("cron_run",) and not g.api:
             token = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token")
             if not token or not secrets.compare_digest(token, session["csrf"]):
                 abort(400, "Your session expired. Please reload the page and try again.")
         if site["maintenance"] and not (g.user and g.user["site_admin"]) and request.endpoint not in (
                 "static", "login", "login_verify", "logout", "set_language", "manifest", "service_worker", "brand_logo"):
             return render_template("maintenance.html"), 503
-        if app.config["JOBS"] and request.endpoint not in ("static", "live_socket"):
+        if app.config["JOBS"] and request.endpoint not in ("static", "live_socket", "healthz"):
             try:
                 store.housekeeping()
             except Exception:                                  # reminders must never break a page
@@ -165,6 +190,27 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
             resp.set_data(page.replace('<html lang="en">', f"<html {attrs}>", 1))
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
         resp.headers.setdefault("Referrer-Policy", "same-origin")
+        if resp.mimetype == "text/html":                  # version 4: what a page may load and who may frame it
+            resp.headers.setdefault("Content-Security-Policy", CSP)
+            resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+            resp.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+            if g.get("user"):
+                resp.headers.setdefault("Cache-Control", "no-store")     # private pages are not kept by the browser
+        if env.get("SECURE_COOKIES") == "1":
+            resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        return compress(resp)
+
+    def compress(resp):
+        """gzip for pages, JSON, CSS and JavaScript when the browser accepts it (a page is 5-8 times smaller)."""
+        if (resp.direct_passthrough or resp.status_code < 200 or resp.status_code >= 300 or "Content-Encoding" in resp.headers
+                or "gzip" not in request.headers.get("Accept-Encoding", "") or resp.mimetype not in GZIP_TYPES):
+            return resp
+        data = resp.get_data()
+        if len(data) < 800:
+            return resp
+        resp.set_data(gzip.compress(data, compresslevel=6))
+        resp.headers["Content-Encoding"] = "gzip"
+        resp.headers["Vary"] = "Accept-Encoding"
         return resp
 
     def tr(text):
@@ -280,14 +326,21 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
         if g.user:
             return redirect(url_for("dashboard"))
         if request.method == "POST":
+            email = request.form.get("email", "")
+            wait = store.login_wait(email, client_ip())
+            if wait:                                     # version 4: too many wrong passwords
+                flash(tr("Too many wrong tries. Please wait {0} minutes and try again.").replace("{0}", str(wait)), "error")
+                return render_template("auth/login.html", email=email), 429
             try:
-                u = store.authenticate(request.form.get("email"), request.form.get("password"))
+                u = store.authenticate(email, request.form.get("password"))
             except TaskError as e:
                 flash(str(e), "error")
-                return render_template("auth/login.html", email=request.form.get("email", "")), 403
+                return render_template("auth/login.html", email=email), 403
             if not u:
+                store.login_failed(email, client_ip())
                 flash("Wrong email or password.", "error")
-                return render_template("auth/login.html", email=request.form.get("email", "")), 401
+                return render_template("auth/login.html", email=email), 401
+            store.login_succeeded(email)
             return finish_login(u, request.form.get("remember"))
         return render_template("auth/login.html", email="")
 
@@ -483,7 +536,10 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
                             priority=a.get("priority", ""), sort="priority")
         tasks = filter_v3(tasks, a)
         columns = {key: [t for t in tasks if t["status"] == key] for key, _ in STATUSES}
-        return render_template("board.html", columns=columns, users=store.users(g.ws, active_only=True),
+        custom = store.columns(g.ws)                                   # version 4: the workspace's own columns
+        placed = store.place_in_columns(custom, tasks) if custom else {}
+        return render_template("board.html", columns=columns, custom=custom, placed=placed,
+                               users=store.users(g.ws, active_only=True),
                                projects=store.projects(g.ws), args=a, labels=store.labels(g.ws),
                                sprints=store.sprints(g.ws), tlabels=store.task_labels([t["id"] for t in tasks]))
 
@@ -495,6 +551,9 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
             return jsonify(ok=False, error=tr("You can only move tasks you created or that are assigned to you.")), 403
         data = request.get_json(silent=True) or {}
         try:
+            if str(data.get("column") or "").isdigit():                # version 4: custom column (WIP limit)
+                col = store.move_to_column(g.user["id"], g.ws, task_id, int(data["column"]))
+                return jsonify(ok=True, status=col["base_status"], label=col["name"])
             store.set_status(g.user["id"], g.ws, task_id, data.get("status"))
         except TaskError as e:
             return jsonify(ok=False, error=tr(str(e))), 400
@@ -580,6 +639,8 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
                  "sprint_id", "repeat")}
         form["estimate"] = fmt_minutes(t["estimate_minutes"], "en") if t["estimate_minutes"] else ""
         form["labels"] = [str(lb["id"]) for lb in store.task_labels([t["id"]])[t["id"]]]
+        for fid, v in store.field_values([t["id"]])[t["id"]].items():
+            form[f"cf_{fid}"] = v
         return form
 
     def task_form_data():
@@ -591,7 +652,8 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
 
     def task_form_page(form, task):
         return render_template("task_form.html", form=form, task=task, users=store.users(g.ws, active_only=True),
-                               projects=store.projects(g.ws), labels=store.labels(g.ws),
+                               projects=store.projects(g.ws), labels=store.labels(g.ws), fields=store.fields(g.ws),
+                               templates=store.templates(g.ws) if not task else [],
                                sprints=[s for s in store.sprints(g.ws) if s["status"] != "closed"])
 
     @app.route("/tasks/new", methods=["GET", "POST"])
@@ -600,7 +662,9 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
         if request.method == "POST":
             data = task_form_data()
             try:
+                values = store.clean_field_values(g.ws, request.form)
                 tid = store.create_task(g.user["id"], g.ws, data)
+                store.set_field_values(g.ws, tid, values)
                 flash("Task created.", "success")
                 return redirect(url_for("task_detail", task_id=tid))
             except TaskError as e:
@@ -612,6 +676,12 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
                     "assignee_id": str(g.user["id"]), "priority": g.workspace["default_priority"],
                     "sprint_id": request.args.get("sprint", str(active["id"]) if active else ""),
                     "labels": request.args.getlist("label")}
+            tpl = store.template(g.ws, request.args.get("template", type=int) or 0)
+            if tpl:                                       # version 4: start from a task template
+                form.update(title=tpl["title"], description=tpl["description"], priority=tpl["priority"],
+                            project_id=str(tpl["project_id"] or form["project_id"]), labels=[str(x) for x in tpl["labels"]],
+                            estimate=fmt_minutes(tpl["estimate_minutes"], "en") if tpl["estimate_minutes"] else "",
+                            template_id=str(tpl["id"]))
         return task_form_page(form, None)
 
     @app.route("/tasks/<int:task_id>")
@@ -627,8 +697,10 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
             abort(404)
         suggestion = None
         if t["status"] != "done" and not t["estimate_minutes"]:
-            suggestion = store.suggest_estimate(g.ws, t["title"], t["project_id"], exclude=task_id)
-        return render_template("task_detail.html", t=t, comments=store.comments(task_id),
+            suggestion = store.suggest_estimate(g.ws, t["title"], t["project_id"], exclude=task_id,
+                                                assignee_id=t["assignee_id"], priority=t["priority"],
+                                                labels=[lb["id"] for lb in store.task_labels([task_id])[task_id]])
+        return render_template("task_detail.html", fields=store.fields(g.ws), values=store.field_values([task_id])[task_id], t=t, comments=store.comments(task_id),
                                subtasks=store.subtasks(task_id), history=store.activity(g.ws, 30, task_id=task_id),
                                files=store.attachments(task_id), entries=store.time_entries(task_id),
                                members=store.users(g.ws, active_only=True), labels=store.task_labels([task_id])[task_id],
@@ -688,7 +760,9 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
         if request.method == "POST":
             data = task_form_data()
             try:
+                values = store.clean_field_values(g.ws, request.form)
                 store.update_task(g.user["id"], g.ws, task_id, data)
+                store.set_field_values(g.ws, task_id, values)
                 flash("Task updated.", "success")
                 return redirect(url_for("task_detail", task_id=task_id))
             except TaskError as e:
@@ -1222,6 +1296,10 @@ def create_app(db_path=None, seed=True, testing=False, notifier=None, driver=Non
     import planning_views
     planning_views.register(app, store, login_required, admin_required, base_url, env)
     admin_views.register(app, store, site_admin_required, base_url, env)
+
+    # ------------------------------------------------------------ version 4 pages
+    import v4_views
+    v4_views.register(app, store, login_required, admin_required, site_admin_required, base_url, env)
 
     # ------------------------------------------------------------ resumes
     import resume_views

@@ -1,0 +1,34 @@
+{% extends "base.html" if user else "public_base.html" %}
+{% block title %}Install the app{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Install TaskFlow on your phone or computer</h1><p class="muted">TaskFlow is a web app: it installs from the browser in a few seconds, opens in its own window and can show notifications.</p></div></div>
+<div class="grid-3 install-grid">
+  <section class="card" id="ios">
+    <h2><svg class="i"><use href="#i-phone"/></svg> iPhone and iPad</h2>
+    <ol class="steps">
+      <li>Open TaskFlow in Safari (iOS 16.4 or newer).</li>
+      <li>Tap the Share button (the square with an arrow).</li>
+      <li>Choose “Add to Home Screen”, then “Add”.</li>
+      <li>Open TaskFlow from the new icon and sign in.</li>
+      <li>In your profile, press “Turn on in this browser” and allow notifications.</li>
+    </ol>
+    <p class="small muted">Apple allows web notifications only for apps added to the Home Screen - that is why step 3 is needed.</p>
+  </section>
+  <section class="card" id="android">
+    <h2><svg class="i"><use href="#i-phone"/></svg> Android</h2>
+    <ol class="steps">
+      <li>Open TaskFlow in Chrome.</li>
+      <li>Tap the menu (three dots) and choose “Install app” or “Add to Home screen”.</li>
+      <li>Open it from the new icon and turn on notifications in your profile.</li>
+    </ol>
+  </section>
+  <section class="card" id="desktop">
+    <h2><svg class="i"><use href="#i-globe"/></svg> Computer</h2>
+    <ol class="steps">
+      <li>In Chrome or Edge, click the install icon at the right end of the address bar.</li>
+      <li>TaskFlow opens in its own window and appears in your start menu or dock.</li>
+    </ol>
+    <p class="small muted">Without internet the app shows a short page and tries again when you are back online.</p>
+  </section>
+</div>
+{% endblock %}

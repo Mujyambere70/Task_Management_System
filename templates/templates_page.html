@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Task templates{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Task templates</h1><p class="muted">Work that comes back again and again (a release, a new customer, a monthly report) starts from a template: title, description, priority, labels and the whole checklist in one click.</p></div>
+</div>
+<div class="grid-2">
+<section class="card flush">
+  <div class="card-head pad"><h2><svg class="i"><use href="#i-copy"/></svg> Templates</h2></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Template</th><th>Checklist</th><th>Use</th><th></th></tr></thead>
+    <tbody>
+    {% for t in items %}
+    <tr>
+      <td><b translate="no">{{ t.name }}</b><div class="small muted" translate="no">{{ t.title }}</div></td>
+      <td>{{ t.steps|length }}</td>
+      <td><form method="post" action="{{ url_for('template_use', tid=t.id) }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="date" name="due_date" aria-label="Due date" min="{{ today.isoformat() }}">
+        <button class="btn btn-primary sm"><svg class="i"><use href="#i-plus"/></svg> New task</button></form></td>
+      <td class="nowrap"><a class="icon-btn sm" href="{{ url_for('templates_page', edit=t.id) }}" title="Edit" aria-label="Edit"><svg class="i"><use href="#i-edit"/></svg></a>
+        {% if user.role == 'admin' or t.created_by == user.id %}<form method="post" class="inline" action="{{ url_for('template_delete', tid=t.id) }}" data-confirm="Delete this template?"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="icon-btn sm" title="Delete" aria-label="Delete"><svg class="i"><use href="#i-trash"/></svg></button></form>{% endif %}</td>
+    </tr>
+    {% else %}<tr><td colspan="4"><div class="empty small">No templates yet. Make the first one on the right.</div></td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+<section class="card">
+  <h2><svg class="i"><use href="#i-{{ 'edit' if edit else 'plus' }}"/></svg> {{ 'Edit template' if edit and edit.id else 'New template' }}</h2>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% if edit and edit.id %}<input type="hidden" name="template_id" value="{{ edit.id }}">{% endif %}
+    <label>Template name<input name="name" maxlength="60" required value="{{ edit.name if edit else '' }}" placeholder="Monthly report"></label>
+    <label>Task title<input name="title" maxlength="120" required value="{{ edit.title if edit else '' }}" placeholder="Write the monthly report"></label>
+    <label>Description<textarea name="description" rows="3">{{ edit.description if edit else '' }}</textarea></label>
+    <div class="form-row">
+      <label>Priority<select name="priority">{% for k, n in PRIORITIES %}<option value="{{ k }}" {{ 'selected' if (edit.priority if edit else 'medium') == k }}>{{ n }}</option>{% endfor %}</select></label>
+      <label>Project<select name="project_id"><option value="">No project</option>{% for p in projects %}<option value="{{ p.id }}" {{ 'selected' if edit and edit.project_id|string == p.id|string }}>{{ p.name }}</option>{% endfor %}</select></label>
+      <label>Estimate<input name="estimate" placeholder="2h 30m" value="{{ (edit.estimate if edit and edit.estimate is defined else (edit.estimate_minutes|hours if edit and edit.estimate_minutes else '')) }}"></label>
+    </div>
+    {% if labels %}<fieldset class="checks"><legend>Labels</legend>{% for lb in labels %}<label class="check"><input type="checkbox" name="labels" value="{{ lb.id }}" {{ 'checked' if edit and lb.id in edit.labels }}> <span class="label-chip sm" style="--c: {{ lb.color }}" translate="no">{{ lb.name }}</span></label>{% endfor %}</fieldset>{% endif %}
+    <label>Checklist<textarea name="checklist" rows="5" placeholder="One step per line">{{ edit.steps|join('\n') if edit else '' }}</textarea><small>One step per line (at most 30).</small></label>
+    <div class="form-actions">{% if edit and edit.id %}<a class="btn btn-ghost" href="{{ url_for('templates_page') }}">Cancel</a>{% endif %}<button class="btn btn-primary">Save template</button></div>
+  </form>
+</section>
+</div>
+{% endblock %}

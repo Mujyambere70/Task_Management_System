@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Workspace tools{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Workspace tools</h1><p class="muted">{{ 'Shape the board and the tasks of {0} to the way your team works.'|tr|replace('{0}', workspace.name) }}</p></div>
+  <a class="btn btn-light" href="{{ url_for('workspace_settings') }}"><svg class="i"><use href="#i-settings"/></svg> Workspace settings</a>
+</div>
+<nav class="tabs">
+  {% for key, label in [('board', 'Board columns'), ('fields', 'Custom fields'), ('automations', 'Automations'), ('webhooks', 'Webhooks')] %}
+  <a href="{{ url_for('workspace_tools', section=key) }}" class="{{ 'on' if section == key }}">{{ label }}</a>
+  {% endfor %}
+</nav>
+
+{% if section == 'board' %}
+<div class="grid-2 wide-first">
+<section class="card">
+  <h2><svg class="i"><use href="#i-board"/></svg> Board columns</h2>
+  {% if not columns %}
+  <p class="muted">The board now has the four usual columns. Make them your own: rename them, add columns such as “Backlog” or “Testing”, and set a WIP limit (the most cards a column may hold).</p>
+  <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="start">
+    <button class="btn btn-primary"><svg class="i"><use href="#i-edit"/></svg> Use my own columns</button></form>
+  {% else %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th colspan="3">Column, state and WIP limit</th><th></th></tr></thead>
+    <tbody>
+    {% for c in columns %}
+    <tr>
+      <td colspan="3">
+        <form method="post" class="col-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="save"><input type="hidden" name="column_id" value="{{ c.id }}">
+          <input name="name" value="{{ c.name }}" maxlength="30" required aria-label="Column name" translate="no">
+          <select name="base_status" aria-label="State">{% for st in BASE_STATES %}<option value="{{ st }}" {{ 'selected' if c.base_status == st }}>{{ STATUS_NAMES[st] }}</option>{% endfor %}</select>
+          <input type="number" name="wip_limit" min="0" max="99" value="{{ c.wip_limit }}" aria-label="WIP limit" class="num">
+          <button class="btn btn-light sm">Save</button>
+        </form>
+      </td>
+      <td class="nowrap">
+        {% for act, icon, label in [('up', 'up', 'Move left'), ('down', 'down', 'Move right'), ('delete', 'trash', 'Delete')] %}
+        <form method="post" class="inline"{% if act == 'delete' %} data-confirm="Delete this column? Its cards go to the first column of the same state."{% endif %}>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="{{ act }}"><input type="hidden" name="column_id" value="{{ c.id }}">
+          <button class="icon-btn sm" title="{{ label }}" aria-label="{{ label }}"><svg class="i"><use href="#i-{{ icon }}"/></svg></button></form>
+        {% endfor %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% endif %}
+</section>
+{% if columns %}
+<section class="card">
+  <h2><svg class="i"><use href="#i-plus"/></svg> Add a column</h2>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="save">
+    <label>Name<input name="name" maxlength="30" required placeholder="Testing"></label>
+    <label>State<select name="base_status">{% for st in BASE_STATES %}<option value="{{ st }}">{{ STATUS_NAMES[st] }}</option>{% endfor %}</select>
+      <small>Reports, sprints and the Gantt chart use the state, so they keep working with any columns.</small></label>
+    <label>WIP limit<input type="number" name="wip_limit" min="0" max="99" value="0"><small>0 = no limit. A full column does not take more cards.</small></label>
+    <div class="form-actions"><button class="btn btn-primary">Add column</button></div>
+  </form>
+  <form method="post" data-confirm="Go back to the four usual columns?" class="mt"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="stop">
+    <button class="btn btn-ghost sm">Back to the usual columns</button></form>
+</section>
+{% endif %}
+</div>
+
+{% elif section == 'fields' %}
+<div class="grid-2">
+<section class="card flush">
+  <div class="card-head pad"><h2><svg class="i"><use href="#i-list"/></svg> Custom fields</h2></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Field</th><th>Type</th><th>Choices</th><th></th></tr></thead>
+    <tbody>
+    {% for f in fields %}
+    <tr><td><b translate="no">{{ f.name }}</b>{% if f.required %} <span class="pill st-review">Required</span>{% endif %}</td><td>{{ FIELD_KINDS[f.kind] }}</td>
+      <td class="small" translate="no">{{ f.choices|join(', ') }}</td>
+      <td><form method="post" data-confirm="Delete this field and its values on every task?"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="delete"><input type="hidden" name="field_id" value="{{ f.id }}">
+        <button class="icon-btn sm" title="Delete" aria-label="Delete"><svg class="i"><use href="#i-trash"/></svg></button></form></td></tr>
+    {% else %}<tr><td colspan="4"><div class="empty small">No custom fields yet. Add one on the right: for example “Customer”, “Story points” or “Approved”.</div></td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+<section class="card">
+  <h2><svg class="i"><use href="#i-plus"/></svg> Add a field</h2>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Name<input name="name" maxlength="40" required placeholder="Story points"></label>
+    <label>Type<select name="kind">{% for k, n in FIELD_KINDS.items() %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select></label>
+    <label>Choices<textarea name="options" rows="3" placeholder="Small, Medium, Large"></textarea><small>Only for the Choice type: one per line or separated by commas.</small></label>
+    <label class="check"><input type="checkbox" name="required" value="1"> Required on every task</label>
+    <div class="form-actions"><button class="btn btn-primary">Add field</button></div>
+  </form>
+</section>
+</div>
+
+{% elif section == 'automations' %}
+<div class="grid-2">
+<section class="card flush">
+  <div class="card-head pad"><h2><svg class="i"><use href="#i-bolt"/></svg> Automation rules</h2></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Rule</th><th>Runs</th><th></th></tr></thead>
+    <tbody>
+    {% for r in rules %}
+    <tr class="{{ 'muted' if not r.active }}">
+      <td><b translate="no">{{ r.name }}</b>
+        <div class="small muted"><span>{{ TRIGGERS[r.trigger_kind] }}</span>{% if r.trigger_value %} <span>{{ STATUS_NAMES[r.trigger_value] }}</span>{% endif %}{% if r.project_id %} · <span translate="no">{{ (projects|selectattr('id', 'equalto', r.project_id)|map(attribute='name')|first) or '' }}</span>{% endif %}
+          → <span>{{ ACTIONS[r.action_kind] }}</span>
+          {% if r.action_kind in ('assign', 'notify') %}<span translate="no">{{ (members|selectattr('id', 'equalto', r.action_value|int)|map(attribute='name')|first) or '' }}</span>
+          {% elif r.action_kind == 'priority' %}<span>{{ PRIORITY_NAMES[r.action_value] }}</span>
+          {% elif r.action_kind == 'status' %}<span>{{ STATUS_NAMES[r.action_value] }}</span>
+          {% elif r.action_kind == 'label' %}<span translate="no">{{ (labels|selectattr('id', 'equalto', r.action_value|int)|map(attribute='name')|first) or '' }}</span>
+          {% else %}{{ r.action_value }}{% endif %}</div></td>
+      <td>{{ r.runs }}</td>
+      <td class="nowrap">
+        <form method="post" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="toggle"><input type="hidden" name="rule_id" value="{{ r.id }}">
+          <button class="btn btn-light sm">{{ 'Pause' if r.active else 'Continue' }}</button></form>
+        <form method="post" class="inline" data-confirm="Delete this rule?"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="delete"><input type="hidden" name="rule_id" value="{{ r.id }}">
+          <button class="icon-btn sm" title="Delete" aria-label="Delete"><svg class="i"><use href="#i-trash"/></svg></button></form>
+      </td></tr>
+    {% else %}<tr><td colspan="3"><div class="empty small">No rules yet. A rule does a small job for you every time, for example: when a task is moved to Review, assign it to the tester.</div></td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+<section class="card">
+  <h2><svg class="i"><use href="#i-plus"/></svg> New rule</h2>
+  <form method="post" class="form" id="ruleForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Name<input name="name" maxlength="60" placeholder="Review goes to the tester"></label>
+    <label>When<select name="trigger_kind">{% for k, n in TRIGGERS.items() %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select></label>
+    <label data-show-when="moved_to">State<select name="trigger_value">{% for k, n in STATUSES %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select></label>
+    <label>Only in project<select name="project_id"><option value="">Any project</option>{% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select></label>
+    <label>Then<select name="action_kind" data-picks="1">{% for k, n in ACTIONS.items() %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select></label>
+    <label data-pick="assign notify">Person<select data-for="assign notify">{% for u in members %}<option value="{{ u.id }}">{{ u.name }}</option>{% endfor %}</select></label>
+    <label data-pick="priority">Priority<select data-for="priority">{% for k, n in PRIORITIES %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select></label>
+    <label data-pick="status">State<select data-for="status">{% for k, n in STATUSES %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select></label>
+    <label data-pick="label">Label<select data-for="label">{% for lb in labels %}<option value="{{ lb.id }}">{{ lb.name }}</option>{% endfor %}</select></label>
+    <label data-pick="due_in">Days from today<input type="number" min="0" max="365" value="3" data-for="due_in"></label>
+    <input type="hidden" name="action_value" id="actionValue">
+    <p class="small muted">A change made by a rule does not start other rules, so rules can never run in a circle.</p>
+    <div class="form-actions"><button class="btn btn-primary">Save rule</button></div>
+  </form>
+</section>
+</div>
+
+{% elif section == 'webhooks' %}
+{% if new_secret %}
+<div class="card notice-card"><h2><svg class="i"><use href="#i-lock"/></svg> Signing secret</h2>
+  <p>Copy it now - it is not shown again. Every call carries the header X-TaskFlow-Signature with the HMAC-SHA256 of the body made with this secret. Check it on your side.</p>
+  <div class="copy-row"><input readonly value="{{ new_secret }}" id="hookSecret" translate="no"><button class="btn btn-light sm" data-copy="#hookSecret"><svg class="i"><use href="#i-copy"/></svg> Copy</button></div></div>
+{% endif %}
+<div class="grid-2">
+<section class="card flush">
+  <div class="card-head pad"><h2><svg class="i"><use href="#i-share"/></svg> Webhooks</h2></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Address</th><th>Events</th><th>Last call</th><th></th></tr></thead>
+    <tbody>
+    {% for h in hooks %}
+    <tr><td translate="no" class="small">{{ h.url }}</td><td class="small" translate="no">{{ h.events.replace(',', ', ') }}</td><td class="small" translate="no">{{ h.last_status or '-' }}</td>
+      <td><form method="post" data-confirm="Delete this webhook?"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="delete"><input type="hidden" name="hook_id" value="{{ h.id }}">
+        <button class="icon-btn sm" title="Delete" aria-label="Delete"><svg class="i"><use href="#i-trash"/></svg></button></form></td></tr>
+    {% else %}<tr><td colspan="4"><div class="empty small">No webhooks yet. A webhook tells another system (your own server, Zapier, Make, n8n …) about changes at once.</div></td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+<section class="card">
+  <h2><svg class="i"><use href="#i-plus"/></svg> New webhook</h2>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Address (https)<input name="url" type="url" required placeholder="https://…" translate="no"></label>
+    <fieldset class="checks"><legend>Events</legend>
+      {% for e in EVENTS %}<label class="check"><input type="checkbox" name="events" value="{{ e }}" checked> <code>{{ e }}</code></label>{% endfor %}</fieldset>
+    <p class="small muted">Only public https addresses are allowed. A call that fails is tried again after 1, 5, 30 and 120 minutes.</p>
+    <div class="form-actions"><button class="btn btn-primary">Add webhook</button></div>
+  </form>
+</section>
+</div>
+{% endif %}
+{% endblock %}

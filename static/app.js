@@ -115,10 +115,12 @@
   suggestBtn?.addEventListener('click', async () => {
     const form = suggestBtn.closest('form'), text = document.getElementById('suggestText');
     const title = form.querySelector('[name=title]').value, project = form.querySelector('[name=project_id]')?.value || '';
+    const extra = ['assignee_id', 'priority'].map(n => '&' + n.replace('_id', '') + '=' + encodeURIComponent(form.querySelector(`[name=${n}]`)?.value || '')).join('') +
+      [...form.querySelectorAll('[name=labels]:checked')].map(c => '&label=' + c.value).join('');
     text.textContent = t('Looking for similar tasks…');
     try {
       const u = suggestBtn.dataset.url + '?title=' + encodeURIComponent(title) + '&project=' + encodeURIComponent(project) +
-        (suggestBtn.dataset.task ? '&task=' + suggestBtn.dataset.task : '');
+        (suggestBtn.dataset.task ? '&task=' + suggestBtn.dataset.task : '') + extra;
       const d = await (await fetch(u, { credentials: 'same-origin' })).json();
       text.textContent = d.text;
       if (d.ok) document.getElementById('estimateInput').value = d.value;
@@ -256,7 +258,11 @@
   const board = document.getElementById('board');
   let dragged = null, from = null;
   function updateCounts() {
-    board.querySelectorAll('.col').forEach(c => c.querySelector('.count').textContent = c.querySelectorAll('.kcard').length);
+    board.querySelectorAll('.col').forEach(c => {
+      const n = c.querySelectorAll('.kcard').length, w = +c.dataset.wip || 0;
+      c.querySelector('.count').textContent = w ? `${n} / ${w}` : n;
+      c.classList.toggle('full', !!w && n >= w);
+    });
   }
   if (board) {
     board.addEventListener('dragstart', e => {
@@ -287,14 +293,14 @@
       e.preventDefault();
       col.classList.remove('drag-over');
       if (!dragged) return;
-      const card = dragged, oldBody = from, status = col.dataset.status;
+      const card = dragged, oldBody = from, status = col.dataset.status, column = col.dataset.column || '';
       dragged = null;
-      if (oldBody === card.parentElement && oldBody.closest('.col').dataset.status === status) return;
+      if (oldBody === card.parentElement && oldBody.closest('.col') === col) return;
       updateCounts();
       try {
         const r = await fetch(`/api/tasks/${card.dataset.id}/status`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-          body: JSON.stringify({ status })
+          body: JSON.stringify(column ? { status, column } : { status })
         });
         const data = await r.json();
         if (!r.ok || !data.ok) throw new Error(data.error || t('Could not move the task.'));

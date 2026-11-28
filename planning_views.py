@@ -193,8 +193,10 @@ def register(app, store, login_required, admin_required, base_url, env):
     @app.route("/api/estimate")
     @login_required
     def api_estimate():
-        s = store.suggest_estimate(g.ws, request.args.get("title", ""), request.args.get("project", type=int),
-                                   exclude=request.args.get("task", type=int))
+        a = request.args
+        s = store.suggest_estimate(g.ws, a.get("title", ""), a.get("project", type=int), exclude=a.get("task", type=int),
+                                   assignee_id=a.get("assignee", type=int), priority=a.get("priority") or None,
+                                   labels=a.getlist("label"))
         if not s:
             return jsonify(ok=False, text=tr("No similar finished tasks yet."))
         return jsonify(ok=True, minutes=s["minutes"], value=fmt_minutes(s["minutes"], "en"),
@@ -209,7 +211,8 @@ def register(app, store, login_required, admin_required, base_url, env):
             abort(404)
         if not store.can_edit(g.user, t):
             abort(403)
-        s = store.suggest_estimate(g.ws, t["title"], t["project_id"], exclude=task_id)
+        s = store.suggest_estimate(g.ws, t["title"], t["project_id"], exclude=task_id, assignee_id=t["assignee_id"],
+                                   priority=t["priority"], labels=[lb["id"] for lb in store.task_labels([task_id])[task_id]])
         if s:
             with store.db() as con:
                 con.execute("UPDATE tasks SET estimate_minutes = ? WHERE id = ?", (s["minutes"], task_id))

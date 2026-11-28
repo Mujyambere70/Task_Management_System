@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Estimate accuracy{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>How good are the suggested estimates?</h1><p class="muted">Each finished task with logged time is hidden once, and its time is guessed from all the other tasks. The table compares the guess with the real time.</p></div>
+  <a class="btn btn-light" href="{{ url_for('reports') }}"><svg class="i"><use href="#i-chart"/></svg> Reports</a>
+</div>
+<div class="kpis">
+  <div class="kpi"><div><small>Finished tasks with logged time</small><b>{{ acc.tasks }}</b></div></div>
+  <div class="kpi"><div><small>Average error, version 3 (title only)</small><b>{{ acc.v3.error ~ '%' if acc.v3.error is not none else '-' }}</b></div></div>
+  <div class="kpi"><div><small>Average error, version 4</small><b class="green">{{ acc.v4.error ~ '%' if acc.v4.error is not none else '-' }}</b></div></div>
+</div>
+<section class="card flush"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Method</th><th>Uses</th><th>Tasks it could guess</th><th>Average error</th><th>Within 25 %</th></tr></thead>
+  <tbody>
+    <tr><td><b>Version 3</b></td><td>Words of the title (+ same project)</td><td>{{ acc.v3.answered }}</td><td>{{ acc.v3.error ~ '%' if acc.v3.error is not none else '-' }}</td><td>{{ acc.v3.close ~ '%' if acc.v3.close is not none else '-' }}</td></tr>
+    <tr><td><b>Version 4</b></td><td>Title 60 %, project 15 %, assignee 15 %, labels 10 %, priority 5 %</td><td>{{ acc.v4.answered }}</td><td>{{ acc.v4.error ~ '%' if acc.v4.error is not none else '-' }}</td><td>{{ acc.v4.close ~ '%' if acc.v4.close is not none else '-' }}</td></tr>
+  </tbody></table></div></section>
+<p class="small muted">The suggestion is a help, not a promise: it learns from your own finished work, so it gets better the more time your team logs.</p>
+{% endblock %}

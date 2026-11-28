@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Calendar import{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Calendar import</h1><p class="muted">Bring events and to-dos from Google Calendar, Outlook or Apple Calendar into TaskFlow as tasks.</p></div>
+  <a class="btn btn-light" href="{{ url_for('calendar_view') }}"><svg class="i"><use href="#i-calendar"/></svg> Calendar</a>
+</div>
+<div class="grid-2">
+<section class="card">
+  <h2><svg class="i"><use href="#i-upload"/></svg> Import a file</h2>
+  <p class="muted small">Export a calendar as an .ics file and choose it here. Every event becomes a task with its date as the due date. Importing the same file again changes the dates instead of making copies.</p>
+  <form method="post" enctype="multipart/form-data" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="file">
+    <label>Calendar file (.ics)<input type="file" name="file" accept=".ics,text/calendar" required></label>
+    <label>Put the tasks in<select name="project_id"><option value="">No project</option>{% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select></label>
+    <div class="form-actions"><button class="btn btn-primary">Import</button></div>
+  </form>
+</section>
+<section class="card">
+  <h2><svg class="i"><use href="#i-repeat"/></svg> Follow a calendar</h2>
+  <p class="muted small">Paste the secret iCal address of a calendar (Google: Settings → the calendar → “Secret address in iCal format”; Outlook: Share → Publish → ICS). TaskFlow reads it every 6 hours.</p>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="follow">
+    <label>Name<input name="name" maxlength="60" placeholder="Team holidays"></label>
+    <label>Calendar address<input name="url" required placeholder="https://…/basic.ics" translate="no"></label>
+    <label>Put the tasks in<select name="project_id"><option value="">No project</option>{% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select></label>
+    <div class="form-actions"><button class="btn btn-primary">Follow</button></div>
+  </form>
+</section>
+</div>
+<section class="card flush">
+  <div class="card-head pad"><h2>Calendars you follow</h2></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Name</th><th>Last read</th><th>Result</th><th></th></tr></thead>
+    <tbody>
+    {% for s in subs %}
+    <tr><td><b translate="no">{{ s.name }}</b></td><td>{{ s.last_sync|ago if s.last_sync else 'Never' }}</td><td class="small">{{ s.last_status }}</td>
+      <td class="nowrap">
+        <form method="post" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="sync"><input type="hidden" name="sub_id" value="{{ s.id }}"><button class="btn btn-light sm">Read now</button></form>
+        <form method="post" class="inline" data-confirm="Stop following this calendar? The tasks stay."><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="unfollow"><input type="hidden" name="sub_id" value="{{ s.id }}"><button class="icon-btn sm" title="Stop" aria-label="Stop"><svg class="i"><use href="#i-trash"/></svg></button></form>
+      </td></tr>
+    {% else %}<tr><td colspan="4"><div class="empty small">You do not follow a calendar yet.</div></td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+{% if feed %}
+<section class="card">
+  <h2><svg class="i"><use href="#i-link"/></svg> The other way: your tasks in your calendar</h2>
+  <p class="muted small">Add this private address to your calendar app to see your TaskFlow deadlines there. When you export that calendar later and import it here, moved TaskFlow events change the due dates of their tasks.</p>
+  <div class="copy-row"><input readonly value="{{ feed }}" id="feedUrl" translate="no"><button class="btn btn-light sm" data-copy="#feedUrl"><svg class="i"><use href="#i-copy"/></svg> Copy</button></div>
+</section>
+{% endif %}
+{% endblock %}

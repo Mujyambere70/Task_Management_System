@@ -13,6 +13,13 @@
   <a href="{{ url_for('forgot') }}" class="small">Forgot password?</a></div>
   <button class="btn btn-primary btn-block btn-lg">Sign in</button>
 </form>
+{% if SSO %}
+<div class="sso">
+  <span class="or">or</span>
+  {% for p in SSO %}<a class="btn btn-light btn-block" href="{{ url_for('sso_start', provider=p.id, next=request.args.get('next') or None) }}">
+    <svg class="i"><use href="#i-lock"/></svg> {{ 'Sign in with {0}'|tr|replace('{0}', p.name) }}</a>{% endfor %}
+</div>
+{% endif %}
 <div class="demo-box">
   <b>Demo accounts</b>
   <button type="button" class="link fill-demo" data-email="admin@taskflow.demo" data-pw="Admin@1234">Admin · admin@taskflow.demo</button>

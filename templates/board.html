@@ -36,15 +36,21 @@
     {% for sp in sprints %}<option value="{{ sp.id }}" {{ 'selected' if args.get('sprint') == sp.id|string }}>{{ sp.name }}</option>{% endfor %}
   </select>{% endif %}
   {% if args %}<a class="btn btn-ghost" href="{{ url_for('board') }}">Clear</a>{% endif %}
+  {% if user.role == 'admin' %}<a class="btn btn-ghost" href="{{ url_for('workspace_tools', section='board') }}"><svg class="i"><use href="#i-settings"/></svg> Columns</a>{% endif %}
 </form>
 
-<div class="board" id="board" data-live-board="1">
-  {% for key, name in STATUSES %}
-  <section class="col" data-status="{{ key }}">
-    <div class="col-head"><i class="lg-{{ key }}"></i><h3>{{ name }}</h3><span class="count">{{ columns[key]|length }}</span>
-      <a class="icon-btn sm" href="{{ url_for('task_new', status=key, project=args.get('project', '')) }}" title="Add task"><svg class="i"><use href="#i-plus"/></svg></a></div>
+{% with page = 'board' %}{% include "_save_view.html" %}{% endwith %}
+<div class="board{{ ' many' if custom|length > 4 }}" id="board" data-live-board="1"{% if custom|length > 4 %} style="--cols: {{ custom|length }}"{% endif %}>
+  {% if custom %}{% set cols = custom %}{% else %}{% set cols = [] %}{% for key, name in STATUSES %}{% set _ = cols.append({'id': '', 'name': name, 'base_status': key, 'wip_limit': 0}) %}{% endfor %}{% endif %}
+  {% for c in cols %}
+  {% set cards = placed[c.id] if custom else columns[c.base_status] %}
+  {% set full = c.wip_limit and cards|length >= c.wip_limit %}
+  <section class="col{{ ' full' if full }}" data-status="{{ c.base_status }}" data-column="{{ c.id }}" data-wip="{{ c.wip_limit }}">
+    <div class="col-head"><i class="lg-{{ c.base_status }}"></i><h3>{{ c.name }}</h3>
+      <span class="count{{ ' wip' if c.wip_limit }}" {% if c.wip_limit %}title="WIP limit"{% endif %}>{{ cards|length }}{% if c.wip_limit %} / {{ c.wip_limit }}{% endif %}</span>
+      <a class="icon-btn sm" href="{{ url_for('task_new', status=c.base_status, project=args.get('project', '')) }}" title="Add task"><svg class="i"><use href="#i-plus"/></svg></a></div>
     <div class="col-body">
-      {% for t in columns[key] %}
+      {% for t in cards %}
       <article class="kcard {{ 'locked' if not can_edit(t) }}" draggable="{{ 'true' if can_edit(t) else 'false' }}" data-id="{{ t.id }}">
         <div class="kcard-top">{{ m.priority_pill(t.priority) }}{% if not current %}{{ m.project_tag(t) }}{% endif %}</div>
         <a href="{{ url_for('task_detail', task_id=t.id) }}" class="kcard-title" translate="no">{{ t.title }}</a>

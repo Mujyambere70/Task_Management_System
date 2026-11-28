@@ -136,6 +136,21 @@
       <button type="button" class="btn btn-ghost sm" id="pushOff" hidden>Turn off in this browser</button>
       {% if push_count %}<form method="post" action="{{ url_for('push_test') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-ghost sm">Send a test</button></form>{% endif %}
     </div>
+    <p class="small muted ios-note">iPhone or iPad? Add TaskFlow to the Home Screen first - <a href="{{ url_for('install') }}#ios">see how</a>.</p>
+  </section>
+  <section class="card" id="weekly">
+    <h2><svg class="i"><use href="#i-mail"/></svg> Weekly email and look</h2>
+    <form method="post" action="{{ url_for('set_digest') }}" class="form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label class="toggle"><span>Monday email with my tasks of the week<small>Overdue tasks and tasks due in the next 7 days, from all your workspaces.</small></span>
+        <input type="checkbox" name="digest" value="1" {{ 'checked' if user.digest }} onchange="this.form.submit()"></label>
+    </form>
+    <form method="post" action="{{ url_for('set_theme') }}" class="inline-form mt">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Theme <select name="theme" onchange="this.form.submit()">
+        {% for k, n in [('auto', 'Like my device'), ('light', 'Light'), ('dark', 'Dark')] %}<option value="{{ k }}" {{ 'selected' if theme == k }}>{{ n }}</option>{% endfor %}</select></label>
+    </form>
+    <p class="small"><a href="{{ url_for('developer') }}">API keys</a> · <a href="{{ url_for('translate_suggest') }}">Suggest a translation</a> · <a href="{{ url_for('install') }}">Install the app</a></p>
   </section>
 </div>
 

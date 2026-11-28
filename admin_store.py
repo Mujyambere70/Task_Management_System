@@ -36,7 +36,7 @@ SITE_SETTINGS = {
     "allow_registration": ("Accounts", "New people can sign up", "bool", "1", "Invite links always work."),
     "max_workspaces": ("Accounts", "Most workspaces one person can create", "int:1:100", "10", ""),
     "max_resumes": ("Accounts", "Most resumes per person", "int:1:50", "10", ""),
-    "max_file_mb": ("Files", "Largest file (MB)", "int:1:20", "5", "Files are kept in the database."),
+    "max_file_mb": ("Files", "Largest file (MB)", "int:1:20", "5", "Files are kept in the database, or in S3 storage when S3_BUCKET is set."),
     "max_files": ("Files", "Most files per task", "int:1:50", "10", ""),
     "trash_days": ("Data", "Days deleted tasks stay in the trash", "int:1:365", "30", ""),
     "maintenance": ("Maintenance", "Maintenance mode", "bool", "",

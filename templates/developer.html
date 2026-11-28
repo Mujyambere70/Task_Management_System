@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}API keys{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>API keys</h1><p class="muted">Connect your own scripts and tools to TaskFlow with the REST API. A key works for one workspace and acts as you.</p></div>
+</div>
+{% if new_token %}
+<div class="card notice-card"><h2><svg class="i"><use href="#i-lock"/></svg> Your new key</h2>
+  <p>Copy it now - TaskFlow keeps only a fingerprint of it and cannot show it again.</p>
+  <div class="copy-row"><input readonly value="{{ new_token }}" id="newToken" translate="no"><button class="btn btn-light sm" data-copy="#newToken"><svg class="i"><use href="#i-copy"/></svg> Copy</button></div></div>
+{% endif %}
+<div class="grid-2">
+<section class="card flush">
+  <div class="card-head pad"><h2><svg class="i"><use href="#i-lock"/></svg> Your keys</h2></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Name</th><th>Workspace</th><th>Access</th><th>Last used</th><th></th></tr></thead>
+    <tbody>
+    {% for t in tokens %}
+    <tr><td><b translate="no">{{ t.name }}</b><div class="small muted" translate="no">{{ t.prefix }}…</div></td><td translate="no">{{ t.ws_name }}</td>
+      <td><span class="pill {{ 'st-review' if t.scope == 'write' else 'st-todo' }}">{{ 'Read and write' if t.scope == 'write' else 'Read only' }}</span></td>
+      <td>{{ t.last_used|ago if t.last_used else 'Never' }}</td>
+      <td><form method="post" data-confirm="Delete this key? Programs that use it stop working."><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="revoke"><input type="hidden" name="token_id" value="{{ t.id }}">
+        <button class="icon-btn sm" title="Delete" aria-label="Delete"><svg class="i"><use href="#i-trash"/></svg></button></form></td></tr>
+    {% else %}<tr><td colspan="5"><div class="empty small">No keys yet.</div></td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+<section class="card">
+  <h2><svg class="i"><use href="#i-plus"/></svg> {{ 'New key for {0}'|tr|replace('{0}', workspace.name) }}</h2>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Name<input name="name" maxlength="40" required placeholder="My report script"></label>
+    <label class="radio"><input type="radio" name="scope" value="read" checked><span><b>Read only</b><small class="muted"> Lists tasks and projects.</small></span></label>
+    <label class="radio"><input type="radio" name="scope" value="write"><span><b>Read and write</b><small class="muted"> Also creates, changes and deletes tasks and writes comments - with your rights.</small></span></label>
+    <div class="form-actions"><button class="btn btn-primary">Make key</button></div>
+  </form>
+</section>
+</div>
+<section class="card api-doc">
+  <h2><svg class="i"><use href="#i-file"/></svg> API guide</h2>
+  <p class="muted">Send the key in the “Authorization” header, as in the example. Answers are JSON. At most 120 requests per minute per person.</p>
+  <pre translate="no">curl -H "Authorization: Bearer tf_…" {{ api_base }}/tasks?status=in_progress</pre>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Request</th><th>What it does</th></tr></thead>
+    <tbody translate="no">
+      <tr><td><code>GET /api/v1/me</code></td><td>You, your role and the workspace of the key</td></tr>
+      <tr><td><code>GET /api/v1/projects</code></td><td>Projects of the workspace</td></tr>
+      <tr><td><code>GET /api/v1/tasks?status=&amp;priority=&amp;assignee=&amp;project=&amp;q=&amp;limit=</code></td><td>Tasks (with labels and custom fields)</td></tr>
+      <tr><td><code>GET /api/v1/tasks/&lt;id&gt;</code></td><td>One task</td></tr>
+      <tr><td><code>POST /api/v1/tasks</code> {"title", "description", "status", "priority", "assignee_id", "project_id", "due_date", "estimate"}</td><td>New task</td></tr>
+      <tr><td><code>PATCH /api/v1/tasks/&lt;id&gt;</code> {only the fields to change}</td><td>Change a task</td></tr>
+      <tr><td><code>DELETE /api/v1/tasks/&lt;id&gt;</code></td><td>Put a task in the trash</td></tr>
+      <tr><td><code>POST /api/v1/tasks/&lt;id&gt;/comments</code> {"body"}</td><td>Write a comment</td></tr>
+    </tbody></table></div>
+</section>
+{% endblock %}

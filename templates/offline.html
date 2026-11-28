@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Offline · TaskFlow</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body class="offline-page">
+<main class="offline-box">
+  <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" width="64" height="64">
+  <h1>You are offline</h1>
+  <p class="muted">TaskFlow needs the internet to show your tasks. Your changes are safe on the server.</p>
+  <button class="btn btn-primary" onclick="location.reload()">Try again</button>
+</main>
+<script>window.addEventListener('online', () => location.reload());</script>
+</body></html>

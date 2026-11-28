@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Messages sent{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Messages sent</h1><p class="muted">Every email, Slack, Telegram and push message the site made, and what happened to it. Demo addresses (.demo, .example) are never sent.</p></div></div>
+<div class="page-head"><div><h1>Messages sent</h1><p class="muted">Every email, Slack, Telegram and push message the site made, and what happened to it. Demo addresses (.demo, .example) are never sent. A failed email or webhook is tried again after 1, 5, 30 and 120 minutes.</p></div></div>
 {% include "admin/_nav.html" %}
 <div class="grid-2">
 <section class="card">
@@ -20,13 +20,15 @@
   <p class="small muted">The result is shown in the list below.</p>
 </section>
 </div>
-<div class="tabs">{% for key, label in [('', 'All'), ('email', 'Email'), ('push', 'Push'), ('slack', 'Slack'), ('telegram', 'Telegram')] %}<a href="{{ url_for('admin_outbox', channel=key or None) }}" class="{{ 'on' if channel == key }}">{{ label }}</a>{% endfor %}</div>
+<div class="tabs">{% for key, label in [('', 'All'), ('email', 'Email'), ('push', 'Push'), ('slack', 'Slack'), ('telegram', 'Telegram'), ('webhook', 'Webhooks')] %}<a href="{{ url_for('admin_outbox', channel=key or None) }}" class="{{ 'on' if channel == key }}">{{ label }}</a>{% endfor %}</div>
 <section class="card flush"><div class="table-wrap"><table class="table">
-  <thead><tr><th>When</th><th>Channel</th><th>To</th><th>Subject</th><th>Result</th></tr></thead>
+  <thead><tr><th>When</th><th>Channel</th><th>To</th><th>Subject</th><th>Result</th><th>Tries</th><th></th></tr></thead>
   <tbody>
   {% for r in rows %}
     <tr><td>{{ r.created_at|ago }}</td><td>{{ r.channel }}</td><td translate="no">{{ r.to_addr }}</td><td translate="no" title="{{ r.body }}">{{ r.subject|truncate(60) }}</td>
-      <td><span class="pill {{ 'st-done' if r.status == 'sent' else 'st-todo' if r.status.startswith('not sent') or r.status.startswith('failed') else 'st-review' }}">{{ r.status }}</span></td></tr>
-  {% else %}<tr><td colspan="5"><div class="empty">No messages yet.</div></td></tr>{% endfor %}
+      <td><span class="pill {{ 'st-done' if r.status == 'sent' else 'st-todo' if r.status.startswith('not sent') or r.status.startswith('failed') else 'st-review' }}">{{ r.status }}</span></td>
+      <td>{{ r.attempts or '' }}</td>
+      <td>{% if r.channel in ('email', 'webhook') and r.status.lower().startswith('failed') %}<form method="post" action="{{ url_for('admin_outbox_retry', oid=r.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-light sm">Send again</button></form>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="7"><div class="empty">No messages yet.</div></td></tr>{% endfor %}
   </tbody></table></div></section>
 {% endblock %}

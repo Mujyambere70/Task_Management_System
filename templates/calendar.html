@@ -7,6 +7,7 @@
     <a class="icon-btn bordered" href="{{ url_for('calendar_view', m=prev_m) }}" title="Previous month"><svg class="i"><use href="#i-left"/></svg></a>
     <a class="btn btn-light" href="{{ url_for('calendar_view') }}">Today</a>
     <a class="icon-btn bordered" href="{{ url_for('calendar_view', m=next_m) }}" title="Next month"><svg class="i"><use href="#i-right"/></svg></a>
+    <a class="btn btn-light" href="{{ url_for('calendar_import') }}"><svg class="i"><use href="#i-upload"/></svg> Import</a>
   </div>
 </div>
 <div class="card flush">

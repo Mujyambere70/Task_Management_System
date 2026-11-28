@@ -203,6 +203,9 @@
         <dt>Created</dt><dd>{{ t.created_at[:10]|nice_date }}</dd>
         <dt>Last update</dt><dd>{{ t.updated_at|ago }}</dd>
         {% if t.completed_at %}<dt>Completed</dt><dd class="green">{{ t.completed_at[:10]|nice_date }}</dd>{% endif %}
+        {% for f in fields %}{% set v = values.get(f.id, '') %}
+        <dt translate="no">{{ f.name }}</dt><dd>{% if f.kind == 'checkbox' %}{{ 'Yes' if v else 'No' }}{% elif f.kind == 'date' and v %}{{ v|nice_date }}{% else %}<span translate="no">{{ v or '—' }}</span>{% endif %}</dd>
+        {% endfor %}
       </dl>
     </section>
     <section class="card">

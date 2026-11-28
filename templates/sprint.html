@@ -96,7 +96,7 @@
   <form method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="action" value="closed">
     <h2>Close the sprint</h2>
-    <p class="muted">{{ 'Open tasks: {0}'|tr|replace('{0}', tasks|rejectattr('status', 'equalto', 'done')|list|length) }}. Where should they go?</p>
+    <p class="muted">{{ 'Open tasks: {0}'|tr|replace('{0}', tasks|rejectattr('status', 'equalto', 'done')|list|length) }}. {{ 'Where should they go?'|tr }}</p>
     <label>Open tasks go to
       <select name="move_to"><option value="">The backlog</option>
         {% for o in others %}<option value="{{ o.id }}">{{ o.name }}</option>{% endfor %}</select></label>

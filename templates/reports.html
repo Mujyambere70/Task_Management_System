@@ -6,6 +6,7 @@
   <div><h1>Reports</h1><p class="muted"><span translate="no">{{ workspace.name }}</span> · {{ fmt_date(today, 'long') }}</p></div>
   <div class="actions">
     <button class="btn btn-light" onclick="window.print()">Print</button>
+    <a class="btn btn-light" href="{{ url_for('estimate_report') }}"><svg class="i"><use href="#i-sparkle"/></svg> Estimate accuracy</a>
     <a class="btn btn-light" href="{{ url_for('export_time_csv') }}"><svg class="i"><use href="#i-download"/></svg> Time CSV</a>
     <a class="btn btn-primary" href="{{ url_for('export_csv') }}"><svg class="i"><use href="#i-download"/></svg> Tasks CSV</a>
   </div>

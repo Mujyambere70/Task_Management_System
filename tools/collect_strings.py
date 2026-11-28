@@ -81,7 +81,12 @@ pages += [f"/tasks/{t['id']}" for t in tasks[:40]] + [f"/tasks/{tasks[0]['id']}/
 pages += ["/sprints", "/sprints/1", "/sprints/2", "/sprints/2?metric=hours", "/gantt", "/labels", "/search?q=deploy",
           "/search?q=zzzz", "/search?q=a", "/trash", "/admin/site", "/admin/users", "/admin/users/1", "/admin/users/2",
           "/admin/workspaces", "/admin/workspaces/1", "/admin/resumes", "/admin/translations", "/admin/outbox",
-          "/admin/outbox?channel=email", "/admin/audit", "/tasks?label=1", "/board?sprint=2"]
+          "/admin/outbox?channel=email", "/admin/audit", "/tasks?label=1", "/board?sprint=2",
+          # version 4
+          "/workspace/tools/board", "/workspace/tools/fields", "/workspace/tools/automations", "/workspace/tools/webhooks",
+          "/templates", "/templates?edit=1", "/tasks/new?template=1", "/developer", "/calendar/import", "/reports/estimates",
+          "/translate/suggest", "/translate/suggest?english=New+task", "/admin/suggestions", "/admin/system",
+          "/admin/outbox?channel=webhook", "/install", "/offline", "/tasks?priority=urgent&sort=due"]
 for url in pages:
     admin.get(url)
 admin.post("/tasks/" + str(tasks[0]["id"]) + "/timer", data={"csrf_token": "x" * 32})
@@ -136,6 +141,13 @@ for d in (planning.REPEATS, planning.SPRINT_STATES):
     for v in d.values():
         record(v)
 for text in ("sent", "not sent: demo or test address", "not sent: no email service", "failed"):
+    record(text)
+import v4_store  # noqa: E402
+for d in (v4_store.TRIGGERS, v4_store.ACTIONS, v4_store.FIELD_KINDS):
+    for v in d.values():
+        record(v)
+for text in ("Theme: like the device", "Theme: light", "Theme: dark", "Overdue", "Due in the next 7 days",
+             "Hello {0},", "Your tasks for this week:", "Sign in with {0}"):
     record(text)
 
 if MISSING:

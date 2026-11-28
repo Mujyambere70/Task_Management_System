@@ -100,7 +100,7 @@ TASKS = [
     (2, "Deploy TaskFlow v2 to Fly.io with Neon PostgreSQL", "Dockerfile, fly.toml, secrets DATABASE_URL and SECRET_KEY.",
      "todo", "urgent", 0, 2, ["fly launch --no-deploy", "fly secrets set", "fly deploy", "Update README links"]),
     (2, "Accessibility check (keyboard and contrast)", "", "todo", "medium", 5, 5, []),
-    (2, "Dark mode", "", "todo", "low", 3, 14, []),
+    (2, "Dark mode", "Version 4: light, dark or like the device, chosen in the top bar.", "done", "low", 3, -1, []),
     (2, "Sprints, Gantt chart and task dependencies", "Version 3: sprint burndown and velocity, Gantt bars with arrows, "
      "\"waits for\" links that block finishing too early.", "in_progress", "high", 0, 4,
      ["+Sprints and burndown", "+Gantt chart", "Dependency arrows on the board"]),
@@ -109,6 +109,13 @@ TASKS = [
     (2, "Web Push, calendar feed and Slack / Telegram messages", "", "todo", "high", 2, 6, []),
     (2, "Resume as a PDF made on the server", "Same designs as the web page, with Arabic and Chinese fonts.",
      "todo", "medium", 1, 8, []),
+    (2, "Custom board columns with WIP limits", "Version 4: own columns for every workspace, each tied to one of the "
+     "four states, with a limit of cards per column.", "in_progress", "high", 0, 3,
+     ["+Columns table", "+Drag a card to a column", "Message when a column is full"]),
+    (2, "Automation rules and signed webhooks", "When ... then ... rules; webhooks signed with HMAC-SHA256 and tried "
+     "again when they fail.", "review", "high", 2, 4, ["+Rules", "+Webhooks", "Retry test"]),
+    (2, "REST API with personal keys", "", "todo", "medium", 2, 7, []),
+    (2, "Sign in with Google and Microsoft", "OpenID Connect with PKCE.", "todo", "high", 0, 9, []),
     # ---- CalcWise
     (3, "Investment calculator: simple and compound interest", "", "done", "medium", 4, -15, []),
     (3, "Bond repayment calculator with chart", "Monthly repayment and total interest.", "done", "medium", 4, -11, []),
@@ -321,6 +328,7 @@ def load_demo(store):
         with store.db() as con:
             con.execute("UPDATE resumes SET visibility = 'public', views = ? WHERE id = ?", (views, r))
     _planning_demo(store, admin, ws_ids, task_ids, today)
+    _v4_demo(store, admin, user_ids, ws_ids, task_ids)
     with store.db() as con:
         con.execute("DELETE FROM events")
 
@@ -516,3 +524,61 @@ SAMPLE_RESUMES = [
                                    {"name": "Français", "level": "C1", "score": 4}]),
         ]}, "modern", "#7c3aed", "ar", 17),
 ]
+
+
+def _v4_demo(store, admin, user_ids, ws_ids, task_ids):
+    """Version 4 demo data: own board columns with WIP limits, custom fields, automation rules, task templates and
+    saved views (all fictional)."""
+    ws0, ws1 = ws_ids[0], ws_ids[1]
+    store.start_custom_columns(admin, ws0)
+    cols = {c["base_status"]: c for c in store.columns(ws0)}
+    store.save_column(admin, ws0, "In Progress", "in_progress", 8, cols["in_progress"]["id"])
+    store.save_column(admin, ws0, "Code review", "review", 4, cols["review"]["id"])
+    testing = store.save_column(admin, ws0, "Testing", "review", 3)
+    store.move_column(admin, ws0, testing, -1)                      # before "Done"
+    with store.db() as con:
+        rows = con.execute("SELECT id FROM tasks WHERE workspace_id = ? AND status = 'review' ORDER BY id", (ws0,)).fetchall()
+        for r in rows[1:2]:
+            con.execute("UPDATE tasks SET column_id = ? WHERE id = ?", (testing, r[0]))
+
+    points = store.save_field(admin, ws0, "Story points", "number")
+    area = store.save_field(admin, ws0, "Area", "select", "Frontend\nBackend\nDatabase\nDevOps")
+    store.save_field(admin, ws0, "Customer approved", "checkbox")
+    store.save_field(admin, ws1, "Grade", "select", "5\n4\n3")
+    for title, p, a in [("Custom board columns with WIP limits", "5", "Frontend"),
+                        ("Automation rules and signed webhooks", "8", "Backend"),
+                        ("REST API with personal keys", "5", "Backend"), ("Sign in with Google and Microsoft", "3", "Backend"),
+                        ("Deploy TaskFlow v2 to Fly.io with Neon PostgreSQL", "3", "DevOps"),
+                        ("Mobile layout for checkout", "3", "Frontend")]:
+        if title in task_ids:
+            store.set_field_values(ws0, task_ids[title][0], {points: p, area: a})
+
+    elena, david = user_ids[5], user_ids[2]
+    store.save_automation(admin, ws0, {"name": "Testing goes to Elena (QA)", "trigger_kind": "moved_to",
+                                       "trigger_value": "review", "action_kind": "assign", "action_value": str(elena)})
+    store.save_automation(admin, ws0, {"name": "Finished work: tell Jean", "trigger_kind": "moved_to",
+                                       "trigger_value": "done", "action_kind": "notify", "action_value": str(admin)})
+    store.save_automation(admin, ws0, {"name": "New tasks are due in 2 days", "trigger_kind": "task_created",
+                                       "action_kind": "due_in", "action_value": "2", "project_id": ""})
+    store.toggle_automation(admin, ws0, store.automations(ws0)[-1]["id"])         # paused: an example
+    with store.db() as con:
+        con.execute("UPDATE automations SET runs = ? WHERE name = ?", (7, "Testing goes to Elena (QA)"))
+        con.execute("UPDATE automations SET runs = ? WHERE name = ?", (12, "Finished work: tell Jean"))
+
+    store.save_template(admin, ws0, {"name": "Release a new version", "title": "Release version X of the app",
+                                     "description": "Everything for one release, in the right order.", "priority": "high",
+                                     "estimate": "3h", "checklist": "Run all tests (SQLite and PostgreSQL)\n"
+                                     "Update the README and the report\nPush to GitHub\nCheck the CI deploy\n"
+                                     "Open the live site and try the new pages"})
+    store.save_template(david, ws0, {"name": "Bug report", "title": "Bug: ", "priority": "high",
+                                     "description": "Steps to repeat:\n1.\n2.\nWhat happened:\nWhat should happen:",
+                                     "checklist": "Repeat the bug\nWrite a test\nFix\nCheck on the live site"})
+    store.save_template(admin, ws1, {"name": "Weekly lab report", "title": "Lab report - week", "priority": "medium",
+                                     "checklist": "Run the code\nMake the charts\nWrite the conclusion\nUpload to the course page"})
+    store.save_view(admin, ws0, "Urgent tasks", "tasks", "priority=urgent&sort=due")
+    store.save_view(admin, ws0, "My board", "board", f"assignee={admin}")
+    store.suggest_translation(user_ids[4], "rw", "Workspace tools", "Ibikoresho by'aho mukorera",
+                              "Shorter and closer to how people speak.")
+    store.suggest_translation(user_ids[8], "fr", "Quick actions", "Raccourcis", "")
+    with store.db() as con:                    # the set-up above is not news for the activity feed
+        con.execute("DELETE FROM activity WHERE action = 'settings_updated'")

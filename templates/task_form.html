@@ -5,6 +5,9 @@
 <div class="form-wrap">
   <section class="card">
     <h1>{{ 'Edit task' if task else 'Create a new task' }}</h1>
+    {% if templates %}<div class="tpl-pick"><span class="muted small">Start from a template:</span>
+      {% for tp in templates %}<a class="chip {{ 'on' if form.get('template_id') == tp.id|string }}" href="{{ url_for('task_new', template=tp.id) }}" translate="no">{{ tp.name }}</a>{% endfor %}
+      <a class="small" href="{{ url_for('templates_page') }}">Manage templates</a></div>{% endif %}
     <form method="post" class="form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <label>Title<input name="title" value="{{ form.get('title', '') }}" required minlength="3" maxlength="120" placeholder="e.g. Prepare monthly sales report" autofocus></label>
@@ -45,6 +48,21 @@
       <fieldset class="label-pick"><legend>Labels {% if not labels %}<a class="small" href="{{ url_for('labels') }}">Make labels</a>{% endif %}</legend>
         {% for lb in labels %}<label class="label-chip" style="--c: {{ lb.color }}"><input type="checkbox" name="labels" value="{{ lb.id }}" {{ 'checked' if lb.id|string in (form.get('labels') or []) }}> <span translate="no">{{ lb.name }}</span></label>{% else %}<span class="muted small">No labels in this workspace yet.</span>{% endfor %}
       </fieldset>
+      {% if fields %}
+      <fieldset class="custom-fields"><legend>More fields</legend>
+        <div class="row2">
+        {% for f in fields %}{% set v = form.get('cf_' ~ f.id, '') %}
+          {% if f.kind == 'checkbox' %}<label class="check"><input type="checkbox" name="cf_{{ f.id }}" value="1" {{ 'checked' if v in ('1', 'on') }}> <span translate="no">{{ f.name }}</span></label>
+          {% else %}<label><span translate="no">{{ f.name }}</span>{% if f.required %} *{% endif %}
+            {% if f.kind == 'select' %}<select name="cf_{{ f.id }}" {{ 'required' if f.required }}><option value="">—</option>{% for c in f.choices %}<option {{ 'selected' if v == c }} translate="no">{{ c }}</option>{% endfor %}</select>
+            {% elif f.kind == 'number' %}<input name="cf_{{ f.id }}" value="{{ v }}" inputmode="decimal" {{ 'required' if f.required }}>
+            {% elif f.kind == 'date' %}<input type="date" name="cf_{{ f.id }}" value="{{ v }}" {{ 'required' if f.required }}>
+            {% else %}<input name="cf_{{ f.id }}" value="{{ v }}" maxlength="500" {{ 'required' if f.required }}>{% endif %}</label>
+          {% endif %}
+        {% endfor %}
+        </div>
+      </fieldset>
+      {% endif %}
       <div class="form-actions">
         <a class="btn btn-ghost" href="{{ url_for('task_detail', task_id=task.id) if task else url_for('task_list') }}">Cancel</a>
         <button class="btn btn-primary">{{ 'Save changes' if task else 'Create task' }}</button>

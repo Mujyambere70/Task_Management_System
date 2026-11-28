@@ -63,6 +63,7 @@
   <button class="btn btn-dark">Apply</button>
   {% if args %}<a class="btn btn-ghost" href="{{ url_for('task_list') }}">Reset</a>{% endif %}
 </form>
+{% with page = 'tasks' %}{% include "_save_view.html" %}{% endwith %}
 
 {% set admin = user.role == 'admin' %}
 {% if admin %}

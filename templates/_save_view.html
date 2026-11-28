@@ -1,0 +1,11 @@
+{% if request.query_string %}
+<details class="save-view">
+  <summary class="btn btn-light sm"><svg class="i"><use href="#i-flag"/></svg> Save this view</summary>
+  <form method="post" action="{{ url_for('view_save') }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="page" value="{{ page }}">
+    <input type="hidden" name="query" value="{{ request.query_string.decode() }}">
+    <input name="name" required minlength="2" maxlength="40" placeholder="Name of the view" aria-label="Name of the view">
+    <button class="btn btn-primary sm">Save</button>
+  </form>
+</details>
+{% endif %}

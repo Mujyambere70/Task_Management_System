@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Suggested words{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Suggested words</h1><p class="muted">People who speak a language suggest better words for the interface. Approved words are used at once (Translations shows every change).</p></div></div>
+{% include "admin/_nav.html" %}
+<section class="card flush"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Language</th><th>English</th><th>Suggested words</th><th>From</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr><td>{{ LANGUAGES[r.lang] }}</td><td class="small" translate="no">{{ r.english }}</td>
+    <td colspan="3">
+      <form method="post" class="inline-form sugg-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="sid" value="{{ r.id }}">
+        <input name="text" value="{{ r.text }}" aria-label="Suggested words" translate="no">
+        <span class="small muted" translate="no">{{ r.user_name or '-' }}{% if r.note %} · {{ r.note }}{% endif %}</span>
+        <button class="btn btn-primary sm" name="action" value="approve">Approve</button>
+        <button class="btn btn-ghost sm" name="action" value="reject">Reject</button>
+      </form></td></tr>
+  {% else %}<tr><td colspan="5"><div class="empty">No suggestions are waiting.</div></td></tr>{% endfor %}
+  </tbody></table></div></section>
+{% if done %}
+<h2 class="section-title">Recently approved</h2>
+<section class="card flush"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Language</th><th>English</th><th>Words</th><th>When</th></tr></thead>
+  <tbody>{% for r in done %}<tr><td>{{ LANGUAGES[r.lang] }}</td><td class="small" translate="no">{{ r.english }}</td><td translate="no">{{ r.text }}</td><td>{{ r.decided_at|ago }}</td></tr>{% endfor %}</tbody>
+</table></div></section>
+{% endif %}
+{% endblock %}

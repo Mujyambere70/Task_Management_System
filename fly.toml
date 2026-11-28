@@ -3,6 +3,8 @@
 #   fly secrets set DATABASE_URL="postgresql://...neon.tech/...?sslmode=require" SECRET_KEY="..." APP_URL="https://michel-taskflow.fly.dev" --app michel-taskflow
 # Optional secrets (TaskFlow 3): BREVO_API_KEY + ALERT_EMAIL_FROM (or SMTP_HOST, SMTP_USER, SMTP_PASSWORD) for email,
 # TELEGRAM_BOT_TOKEN for Telegram messages, CRON_KEY for an outside scheduler. Web Push keys are made by the app itself.
+# TaskFlow 4 (all optional): S3_BUCKET + S3_ACCESS_KEY + S3_SECRET_KEY (+ S3_ENDPOINT, S3_REGION) for files in object
+# storage; GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET and/or MICROSOFT_CLIENT_ID + MICROSOFT_CLIENT_SECRET for single sign-on.
 app = "michel-taskflow"
 primary_region = "ams"
 
@@ -27,7 +29,7 @@ primary_region = "ams"
   grace_period = "20s"
   interval = "60s"
   method = "GET"
-  path = "/about"
+  path = "/healthz"
   timeout = "5s"
 
 [[vm]]

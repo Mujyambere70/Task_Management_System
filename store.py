@@ -16,6 +16,8 @@ The Store class is built from parts (mixins) in other files:
     planning.py   (v3) labels, sprints, dependencies, recurring tasks, Gantt, suggested estimates, search, trash
     admin_store.py (v3) site settings, every account / workspace / resume, interface words, restore, profiles
     integrations.py (v3) outbox, Slack and Telegram, Web Push, iCal feed
+    v4_store.py   (v4) board columns, custom fields, automations, views, templates, API keys, webhooks, retries,
+                  digest, calendar import, better estimate, S3 files, translation suggestions, sign-in limits, SSO
 """
 
 import os
@@ -34,6 +36,7 @@ from notices import NoticesMixin
 from planning import REPEATS, PlanningMixin
 from resumes import ResumesMixin
 from timetrack import TimeMixin
+from v4_store import V4_SCHEMA, V4Mixin
 
 STATUSES = [("todo", "To Do"), ("in_progress", "In Progress"), ("review", "In Review"), ("done", "Done")]
 PRIORITIES = [("low", "Low"), ("medium", "Medium"), ("high", "High"), ("urgent", "Urgent")]
@@ -317,12 +320,12 @@ def _wake_listeners():
         LIVE_SIGNAL.notify_all()
 
 
-class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin, PlanningMixin, AdminMixin, IntegrationsMixin):
+class Store(V4Mixin, FilesMixin, TimeMixin, NoticesMixin, ResumesMixin, PlanningMixin, AdminMixin, IntegrationsMixin):
     def __init__(self, target, driver=None, notifier=None, env=None):
         """target: path of an SQLite file, or a postgresql:// URL."""
         self.env = os.environ if env is None else env
         self.database = Database(target, driver=driver)
-        self.database.init_schema(SCHEMA)
+        self.database.init_schema(SCHEMA + V4_SCHEMA)
         self.is_postgres = self.database.is_postgres
         with self.db() as con:
             for table, cols in MIGRATIONS.items():
@@ -331,6 +334,7 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin, PlanningMixin, Ad
                     if col not in have:
                         con.execute(f"ALTER TABLE {table} ADD COLUMN {col} {sql}")
         self._adopt_version1_data()
+        self._v4_init()
         if notifier is None:
             from notify import Notifier
             notifier = Notifier(env=self.env)
@@ -380,6 +384,7 @@ class Store(FilesMixin, TimeMixin, NoticesMixin, ResumesMixin, PlanningMixin, Ad
             con.after_commit.append(_wake_listeners)
             if action in ("task_created", "task_completed"):
                 self.chat_post(con, ws, action, text)
+        self._v4_after_log(con, user_id, action, details, task_id, ws)
 
     # ================================================================ users
     def count_users(self):

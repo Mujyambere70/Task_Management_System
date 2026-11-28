@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}System{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>System</h1><p class="muted">How the parts of TaskFlow are connected on this server. Keys are set as server secrets and are never shown here.</p></div></div>
+{% include "admin/_nav.html" %}
+<section class="card">
+  <ul class="services">
+    <li><svg class="i"><use href="#i-database"/></svg><div><b>Database</b><small translate="no">{{ db }}</small></div><span class="pill st-done">{{ 'Answers' if health.database == 'ok' else health.database }}</span></li>
+    <li><svg class="i"><use href="#i-bolt"/></svg><div><b>Live updates</b><small>{{ live }}</small></div><span class="pill st-done">On</span></li>
+    <li><svg class="i"><use href="#i-file"/></svg><div><b>File storage</b><small>{{ 'Files in the database: {0}'|tr|replace('{0}', storage.db[0]) }}{% if storage.s3[0] %} · {{ 'Files in S3 storage: {0}'|tr|replace('{0}', storage.s3[0]) }}{% endif %}<br>{{ 'New files go to S3 storage.' if storage.s3_on else 'Set S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY (and S3_ENDPOINT) to keep new files in object storage.' }}</small></div><span class="pill {{ 'st-done' if storage.s3_on else 'st-todo' }}">{{ 'S3' if storage.s3_on else 'Database' }}</span></li>
+    <li><svg class="i"><use href="#i-mail"/></svg><div><b>Email</b><small>{% if email %}<span translate="no">{{ email }}</span><br>{{ 'Messages waiting for another try: {0}'|tr|replace('{0}', health.outbox_retrying) }}{% else %}Not set up: add BREVO_API_KEY or SMTP_HOST.{% endif %}</small></div><span class="pill {{ 'st-done' if email else 'st-todo' }}">{{ 'On' if email else 'Off' }}</span></li>
+    <li><svg class="i"><use href="#i-lock"/></svg><div><b>Sign in with Google / Microsoft</b><small>{% if sso %}{{ sso|map(attribute='name')|join(', ') }}{% else %}Set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET or MICROSOFT_CLIENT_ID + MICROSOFT_CLIENT_SECRET.{% endif %}</small></div><span class="pill {{ 'st-done' if sso else 'st-todo' }}">{{ 'On' if sso else 'Off' }}</span></li>
+    <li><svg class="i"><use href="#i-clock"/></svg><div><b>Background jobs</b><small>Reminders, retries, the weekly digest and calendar reading run every 10 minutes while people use the site (or from /cron/run).</small></div><span class="pill {{ 'st-done' if jobs else 'st-todo' }}">{{ 'On' if jobs else 'Off' }}</span></li>
+  </ul>
+</section>
+{% endblock %}
